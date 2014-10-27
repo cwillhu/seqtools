@@ -38,7 +38,7 @@ def addAndProcessNew(argv):
                     and len(intersect(items, runParametersOptions)) == 1 \
                     and len(intersect(os.listdir(path.join(runPath, "InterOp")), interopRequired)) == len(interopRequired):
                 if options.verbose: print "\nNew run: " + runName
-                touch(runPath + "/seq_seen.txt")  #mark run as seen
+                touch(path.join(runPath, "seq_seen.txt"))  #mark run as seen
 
                 #send notification email
                 hUtil.email(hSettings.NOTIFY_EMAILS,"Found new run", "Processing:\n" + runName)

@@ -38,15 +38,52 @@ class HiSeq(IlluminaNextGen):
 
     def validateSampleSheet(self):
         with open(self.samplesheetFile,"r") as fh:
-            ss = fh.read()
-        ss_orig = ss[:]
-        ss = re.sub(r'\n[,\s]*\r?\n','\n',ss) #delete any blank lines
-        ss = re.sub(r' ','',ss) #delete any spaces 
-        ss = re.sub(r'[.)(@]','_',ss) #replace any illegal characters with underscores
-        headerMatch = re.match(r'FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject\r?\n',ss) #matches from beginning
-        if not headerMatch:
-            raise Exception("Unexpected header in samplesheet " + self.samplesheetFile)
-        if ss != ss_orig:  #if ss is different from original ss, move old samplesheet to backup file and write new one
+            lines = fh.readlines()
+        origLines = lines[:]
+
+        lines = [re.sub(' ', '',x) for x in lines] #delete spaces
+        lines = [x for x in lines if x.rstrip()]  #delete blank lines
+
+        if not re.match('FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject$',lines[0].rstrip()): #matches from beginning
+            raise Exception("Unexpected header line in samplesheet %s: %s" % (self.samplesheetFile, lines[0]))
+
+        seenNames = list()
+        seenIndices = list()
+        for i in range(1,len(lines)): 
+            vals = lines[i].rstrip().split(',')
+            flowcell = vals[0]
+            lane = vals[1]
+            sampName = vals[2]
+            index = vals[4]
+            subID = vals[5]
+            indexType = vals[7]
+
+            if flowcell != self.flowcell:
+                raise Exception("Flowcell in samplesheet %s, line %s, does not match flowcell in run name: %s" % (self.samplesheetFile, i+1, flowcell))
+            if not re.match('[1-8]$', lane):
+                raise Exception("Unexpected lane in samplesheet %s, line %s: %s" % (self.samplesheetFile, i+1, lane))
+            if not re.match('[AGCT-]+$', index):
+                raise Exception("Unexpected index in samplesheet %s, line %s: %s" % (self.samplesheetFile, i+1, index))
+            if not re.match('[A-Za-z0-9]+$', subID):
+                raise Exception("Unexpected subID in samplesheet %s, line %s: %s" % (self.samplesheetFile, i+1, subID))
+            if not re.match('[0-9]+([-_][0-9]+)?$', indexType):
+                raise Exception("Unexpected indexType in samplesheet %s, line %s: %s" % (self.samplesheetFile, i+1, indexType))
+
+            if lane + index in seenIndices:
+                raise Exception("Duplicate index in samplesheet %s, line %s: %s" % (self.samplesheetFile, i+1, index))
+            else:
+                seenIndices.append(lane + index)
+
+            sampName = re.sub(r'[- .)(@]','_',sampName) #replace illegal characters in sample name with underscores
+            if lane + sampName in seenNames:
+                raise Exception("Duplicate sample name in samplesheet %s, line %s: %s" % (self.samplesheetFile, i+1, sampName))
+            else:
+                seenNames.append(lane + sampName)
+
+            vals[2] = sampName
+            lines[i] = ','.join(vals) + '\n'
+
+        if lines != origLines:  #then move old samplesheet to backup file and write new one
             ssBkupDir = path.join(path.dirname(self.samplesheetFile),"ss")
             hUtil.mkdir_p(ssBkupDir)
             ssBkupFile = path.join(ssBkupDir,"SampleSheet.csv.orig")
@@ -58,13 +95,10 @@ class HiSeq(IlluminaNextGen):
             self.setPermissions(ssBkupFile)
             self.deleteItem(self.samplesheetFile)  #cannot set permissions if someone else is owner. Therefore delete before openning to rewrite
             with open(self.samplesheetFile, "w") as fh:
-                fh.write(ss)
+                fh.write(''.join(lines))
             self.setPermissions(self.samplesheetFile)
 
     def parseSampleSheet(self, writeFiles = False): #Split samplesheet by lane and index length, and write new samplesheets to processingDir
-        with open(self.samplesheetFile,"r") as fh:
-            ss = fh.read()
-
         self.samplesheets = OrderedDict()
         self.subIDs = set()
         header = "FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject\n"
@@ -78,7 +112,8 @@ class HiSeq(IlluminaNextGen):
                 index = index1[:rlen]
             return index
 
-        lines = ss.splitlines()
+        with open(self.samplesheetFile,"r") as fh:
+            lines = fh.readlines()
         for i in range(1,len(lines)): #skip header line
             vals = lines[i].split(',')
             lane = vals[1]
@@ -314,15 +349,15 @@ class HiSeq(IlluminaNextGen):
         self.append("Checking for required files in finalDir " + self.finalDir + " ...", self.logFile)
         requiredItems = ["runParameters.xml", "RunInfo.xml", "SampleSheet.csv"]
         if len(hUtil.intersect(os.listdir(self.finalDir), requiredItems)) < 3:
-            raise("One or more files missing from finalDir " + self.finalDir + ": " + ', '.join(requiredItems))
+            raise Exception("One or more files missing from finalDir " + self.finalDir + ": " + ', '.join(requiredItems))
         for analysisName in self.samplesheets.keys():
             analysisDir = path.join(self.finalDir,analysisName)
             requiredItems = [path.join(analysisDir,x) for x in ['Fastq', 'QC', 'Basecall_Stats']]
             for item in requiredItems:
                 if not path.isfile(item) and not path.isdir(item):
-                    raise("Item missing from " + analysisDir + ": " + item)
+                    raise Exception("Item missing from " + analysisDir + ": " + item)
             if len(glob.glob(path.join(analysisDir, 'Fastq', '*.fastq.gz'))) == 0:
-                raise("No fastq.gz files found in " + analysisDir)
+                raise Exception("No fastq.gz files found in " + analysisDir)
 
     def summarizeDemuxResults(self, writeFiles = True):
         if not hasattr(self, 'samplesheets'): self.parseSampleSheet()
@@ -332,7 +367,7 @@ class HiSeq(IlluminaNextGen):
         summary = list()
         for i, line in enumerate(log):
             if re.search(r'error|exception|inconsistent| failed|failed |negative number of base', line, flags=re.IGNORECASE):
-                summary.append("\n_____Error found in "+self.logfile+" at line "+i+":_____\n")
+                summary.append("\n_____Error found in "+self.logFile+" at line "+i+":_____\n")
                 if i-2 >= 0: summary.append(log[i-2])
                 if i-1 >= 0: summary.append(log[i-1])
                 summary.append(log[i])

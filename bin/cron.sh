@@ -9,4 +9,4 @@ module --Silent load centos6/seqve_2.6.6
 source activate
 export DJANGO_SETTINGS_MODULE=seqstats.settings
 
-/n/sw/www/seqtools/bin/cron.py ${1-}
+/n/sw/www/seqtools/bin/cron.py ${@-}

@@ -17,7 +17,7 @@ class SeqRun(models.Model):
     num_lanes = models.IntegerField(null=True, blank=True)
     perc_q_ge_30 = models.FloatField(null=True, blank=True)
     specs = models.TextField()
-    type = models.CharField(max_length=20, default="run")
+    run_type = models.CharField(max_length=20, default="run")
 
     def __unicode__(self):  
         return(self.run_name)
@@ -38,7 +38,7 @@ class Lane(models.Model):
     perc_q_ge_30 = models.FloatField(null=True, blank=True)
     num_tiles = models.IntegerField(null=True, blank=True)
     seqrun = models.ForeignKey('SeqRun',null=True, blank=True)
-    type = models.CharField(max_length=20, default="lane")
+    run_type = models.CharField(max_length=20, default="lane")
 
     def __unicode__(self):  
         try:
