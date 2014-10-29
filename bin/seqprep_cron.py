@@ -1,14 +1,13 @@
 #!/usr/bin/env python 
 from optparse import OptionParser
 from seqprep import slurmProcessRun, processRun
-from seqstats import addSeqRun
 from seqhub import hUtil, hSettings
 import sys, os, re, time, traceback
 import os.path as path
 from seqhub.hUtil import intersect
 from seqhub.hUtil import touch
 
-def addAndProcessNew(argv):
+def seqprepOnNew(argv):
     parser = OptionParser(usage="usage: %prog [options]")
     parser.add_option("-d","--dir", help="Set directory searched for new sequencing runs. Default: %default",
                       default=hSettings.PRIMARY_PARENT, action="store", dest="primaryParent")
@@ -33,28 +32,16 @@ def addAndProcessNew(argv):
             runPath = path.join(options.primaryParent,runName)
             items = os.listdir(runPath) #get list of directory contents
             #check that we haven't examined this run folder before, and then check that required files are present:
-            if "seq_seen.txt" not in items \
+            if 'seq_seen.txt' not in items \
+                    and 'bcl2fastq_seen.txt' not in items \
                     and len(intersect(items, required)) == len(required) \
                     and len(intersect(items, runParametersOptions)) == 1 \
                     and len(intersect(os.listdir(path.join(runPath, "InterOp")), interopRequired)) == len(interopRequired):
                 if options.verbose: print "\nNew run: " + runName
-                touch(path.join(runPath, "seq_seen.txt"))  #mark run as seen
+                touch(path.join(runPath, "bcl2fastq_seen.txt"))  #mark run as seen by seqprep
 
                 #send notification email
                 hUtil.email(hSettings.NOTIFY_EMAILS,"Found new run", "Processing:\n" + runName)
-
-                try:                
-                    #add run to database if not already present
-                     myArgs = [runName, "--no-db-rewrite", "--no-hist-rewrite", "-d", options.primaryParent]
-                     if options.verbose: myArgs.append("--verbose")
-                     logMsg = time.strftime("%c") + "  Running addSeqRun.add() on " + runName + " with args: " + ' '.join(myArgs)
-                     hUtil.append(logMsg, cronLog, echo = options.verbose)
-                     addSeqRun.add(myArgs)  
-                except:
-                     excpStr = runName + "\n\n" + traceback.format_exc()
-                     hUtil.append("Seqstats Exception\n" + excpStr, cronLog, echo = options.verbose)
-                     hUtil.email(hSettings.NOTIFY_EMAILS,"Seqstats Exception", excpStr)
-                     return
 
                 #start seqprep for this run
                 myArgs = [runName, "--primary", options.primaryParent]
@@ -69,4 +56,4 @@ def addAndProcessNew(argv):
                      processRun.process(myArgs)
 
 if __name__ == "__main__":
-    addAndProcessNew(sys.argv[1:])
+    seqprepOnNew(sys.argv[1:])

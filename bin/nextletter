@@ -1,0 +1,31 @@
+#!/bin/bash
+
+run=$1
+[[ ! $run =~ [A-Z0-9_]+ ]] && error "Please provide valid run name"
+dirname=${run:${#run} - 9} #get last 9 characters from run name
+
+echo "
+
+
+Hi all,
+
+The fastq files with the read sequences of run $run are available at:
+
+https://software.rc.fas.harvard.edu/ngsdata/$run
+
+or under /n/ngsdata/$run on the cluster.
+
+Summary statistics can be found at:
+
+https://software.rc.fas.harvard.edu/ngsdata/$run/Reports/html/$dirname/all/all/all/laneBarcode.html
+
+Reads with indices not in SampleSheet.csv are in the fastq file labeled 
+\"Undetermined_S0.\" We encourage users to download a local copy of their 
+data, as run data will eventually be removed from the ngsdata server.
+
+Best,
+Chris
+
+
+
+"

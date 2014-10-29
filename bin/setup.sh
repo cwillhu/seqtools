@@ -7,3 +7,4 @@ else
 fi
 
 module load centos6/seqve_2.6.6
+source activate
