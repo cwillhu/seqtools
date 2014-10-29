@@ -205,8 +205,9 @@ class IlluminaNextGen(object):
             raise Exception('File %s not found.' % myFile)
         if not re.search('.gz$', myFile, flags=re.IGNORECASE):
             raise Exception('Attempt to decompress file not ending in .gz: %s' % myFile)
-        with gzip.open(myFile, 'rb') as fh:
-            data = fh.read(100)
+        fh = gzip.open(myFile, 'rb') 
+        data = fh.read(100)
+        fh.close()
         if data:
             return true #gz file contains data
         else:

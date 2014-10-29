@@ -6,5 +6,5 @@ else
   export PYTHONPATH="$PYTHONPATH:/n/sw/www/seqtools:/n/sw/www/seqtools/seqstats/packages"
 fi
 
-module load centos6/seqve_2.6.6
+module load --Silent centos6/seqve_2.6.6
 source activate

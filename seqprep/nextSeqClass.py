@@ -225,7 +225,7 @@ class NextSeq(IlluminaNextGen):
         hUtil.mkdir_p(outDir)
         fastqDir = path.join(self.finishingDir,'Fastq')
         for filename in os.listdir(fastqDir):
-            if re.match('\S+.fastq.gz', filename) and self.gzNotEmpty(path.join(fastqDir,filename))::
+            if re.match('\S+.fastq.gz', filename) and self.gzNotEmpty(path.join(fastqDir,filename)):
                 command = "module load centos6/fastqc-0.10.1; fastqc -t 4 --noextract --nogroup -o " + outDir + " " + path.join(fastqDir,filename)
                 self.shell(command, self.logFile)
                 
