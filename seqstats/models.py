@@ -7,8 +7,8 @@ class SeqRun(models.Model):
     run_name = models.CharField(max_length=200)
     machine_name = models.CharField(max_length=200)
     date = models.DateField(null=True, blank=True)
-    num_clusters = models.IntegerField(null=True, blank=True)
-    num_clusters_pf = models.IntegerField(null=True, blank=True)
+    num_clusters = models.BigIntegerField(null=True, blank=True)
+    num_clusters_pf = models.BigIntegerField(null=True, blank=True)
     percent_pf_clusters = models.FloatField(null=True, blank=True)
     cluster_density = models.FloatField(null=True, blank=True)
     cluster_density_pf = models.FloatField(null=True, blank=True)
@@ -17,7 +17,7 @@ class SeqRun(models.Model):
     num_lanes = models.IntegerField(null=True, blank=True)
     perc_q_ge_30 = models.FloatField(null=True, blank=True)
     specs = models.TextField()
-    run_type = models.CharField(max_length=20, default="run")
+    type = models.CharField(max_length=20, default="run")
 
     def __unicode__(self):  
         return(self.run_name)
@@ -30,15 +30,15 @@ class Lane(models.Model):
     sub_name = models.CharField(max_length=200)
     machine_name = models.CharField(max_length=200)
     date = models.DateField(null=True, blank=True)
-    num_clusters = models.IntegerField(null=True, blank=True)
-    num_clusters_pf = models.IntegerField(null=True, blank=True)
+    num_clusters = models.BigIntegerField(null=True, blank=True)
+    num_clusters_pf = models.BigIntegerField(null=True, blank=True)
     percent_pf_clusters = models.FloatField(null=True, blank=True)
     cluster_density = models.FloatField(null=True, blank=True)
     cluster_density_pf = models.FloatField(null=True, blank=True)
     perc_q_ge_30 = models.FloatField(null=True, blank=True)
     num_tiles = models.IntegerField(null=True, blank=True)
     seqrun = models.ForeignKey('SeqRun',null=True, blank=True)
-    run_type = models.CharField(max_length=20, default="lane")
+    type = models.CharField(max_length=20, default="lane")
 
     def __unicode__(self):  
         try:

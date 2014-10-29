@@ -324,8 +324,7 @@ class HiSeq(IlluminaNextGen):
             if not path.isdir(outDir):
                 hUtil.mkdir_p(outDir)
             for filename in os.listdir(projectDir):
-                fastqMatch = re.match('\S+.fastq.gz', filename)
-                if fastqMatch:
+                if re.match('\S+.fastq.gz', filename) and self.gzNotEmpty(path.join(projectDir,filename)):
                     command = "module load centos6/fastqc-0.10.1; fastqc -t 4 --noextract --nogroup -o " + outDir + " " + path.join(projectDir,filename)
                     self.shell(command, self.logFile)
                 

@@ -18,7 +18,7 @@ def getRun(runName): #get run from DB (exception raised if does not exist)
     return runs[0]
 
 def add(argv):  #add a new run to DB
-    parser = OptionParser(usage="usage: %prog <run_name> [options]")
+    parser = OptionParser(usage="usage: %prog [options] <run_name>")
 
     parser.add_option("-f","--force", help="Rewrite current DB contents with new run and associated lanes. Default: %default", 
                       default=False, action="store_true", dest="force")
@@ -31,11 +31,12 @@ def add(argv):  #add a new run to DB
     parser.add_option("-d","--dir", help="Directory containing run folder. Default: %default",
                       default=hSettings.PRIMARY_PARENT, action="store", type="string",  dest="primaryParent")
 
-    runName = argv[0]
-    runNameMatch = re.match('[0-9]{6}_[0-9A-Za-z]+_', runName) #matches from beg.
-    if not runNameMatch:
+    options, args = parser.parse_args(argv)
+    if len(args) != 1:
+        parser.error('Expected one input argument, found %s: %s' % (len(args), ' '.join(args)))
+    runName = args[0]
+    if not re.match('[0-9]{6}_[0-9A-Za-z]+_', runName):
         parser.error("Expected run name as first argument, got '" + runName + "'. Use -h to see usage.")
-    options, ignored = parser.parse_args(argv[1:])
     runPath = path.join(options.primaryParent,runName)
 
     try:
@@ -98,6 +99,8 @@ def add(argv):  #add a new run to DB
     run.date=date(int('20' + datetext[:2]), int(datetext[2:4]), int(datetext[4:6]))
     run.machine_name = machine_name
     run.specs = json.dumps(specs, cls=DjangoJSONEncoder)
+    if options.verbose: printRunFields(run)
+    run.save()
 
     perc_q_ge_30_list = list()
     for i in range(1, len(lanes)+1):  #lanes is a dict with keys 1, 2, etc...
@@ -122,6 +125,7 @@ def add(argv):  #add a new run to DB
             myLane.sub_name = submissions[0] #assume one submission per lane
         elif specs['SampleSheet']['Format'] == 'NextSeq':
             myLane.sub_name = specs['SampleSheet']['Description']
+        if options.verbose: printLaneFields(myLane)
         myLane.save()
 
     run.perc_q_ge_30 = sum(perc_q_ge_30_list)/len(perc_q_ge_30_list)
@@ -146,3 +150,17 @@ def add(argv):  #add a new run to DB
     if options.verbose: print "Copying run files to " + histDir + " ..."
     util.copyRunFiles(runPath, histDir)
 
+
+def printLaneFields(myLane):
+    print 'Lane: %s, lane %s' % (myLane.run_name, myLane.lane_num)
+    for field in ['num_clusters', 'num_clusters_pf', 'percent_pf_clusters', 'cluster_density', 'cluster_density_pf', 
+                  'perc_q_ge_30', 'num_tiles', 'date', 'machine_name', 'sub_name']:
+        print '      %s: %s' % (field, getattr(myLane, field))
+
+
+def printRunFields(myRun):
+    print 'Run: %s' % myRun.run_name
+    for field in ['num_clusters', 'num_clusters_pf', 'percent_pf_clusters', 'cluster_density', 'cluster_density_pf', 
+                  'num_tiles', 'num_lanes', 'date', 'machine_name', 'specs']:
+        print '     %s: %s' % (field, getattr(myRun, field))
+                  

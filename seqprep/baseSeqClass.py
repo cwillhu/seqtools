@@ -1,6 +1,6 @@
 from seqhub import hUtil, hSettings
 from seqprep import settings
-import os, re, shutil, glob, fnmatch, errno, stat
+import os, re, shutil, glob, fnmatch, errno, stat, gzip
 from lxml import etree
 from os import path
 import hashlib
@@ -199,3 +199,16 @@ class IlluminaNextGen(object):
             lines.append(rowFormat % tuple(row))
         lines.append('\n')
         return lines
+
+    def gzNotEmpty(self, myFile):
+        if not path.isfile(myFile): 
+            raise Exception('File %s not found.' % myFile)
+        if not re.search('.gz$', myFile, flags=re.IGNORECASE):
+            raise Exception('Attempt to decompress file not ending in .gz: %s' % myFile)
+        with gzip.open(myFile, 'rb') as fh:
+            data = fh.read(100)
+        if data:
+            return true #gz file contains data
+        else:
+            return false  
+            

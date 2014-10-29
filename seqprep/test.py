@@ -10,11 +10,13 @@ b = nextSeqClass.NextSeq("")
 b.processRun()
 
 #----------------------------------------
-
-# levi's lane 8 rerurn
-from seqprep import hiSeqClass
-b = hiSeqClass.HiSeq("141011_D00365_0362_BC4PPLANXX", suffix = "_lane8", lanesStr = "8")
-b.processRun()
+import gzip
+#filename = '/n/home_rc/cwill/test/St5_3_90_TAGGCATG-CTAAGCCT.R1.fastq.gz'  #empty gz file from /n/ngsdata/141024_D00365_0365_AHAY0KADXX/Lane2...
+filename = '/n/home_rc/cwill/test/St5_3_18_TAGGCATG-CTCTCTAT.R1.fastq.gz'  #small gz file
+fh = gzip.open(filename, 'rb')
+#a = fh.readline()
+data = fh.read(100)
+print data
 
 # run 361. (First attempt failed due to "input/output error"
 from seqprep import hiSeqClass
@@ -26,15 +28,4 @@ b.processRun()
 from seqprep import nextSeqClass
 b = nextSeqClass.NextSeq("140923_NS500422_0033_AH13E1BGXX", verbose=True, suppressAdapterTrimming=True, customBasesMask="Y16,I8,Y45N")
 b.processRun()
-
-
-# sandy test:
-from seqprep import hiSeqClass
-b = hiSeqClass.HiSeq("140904_D00365_0326_AH9YRCADXX")
-b.processRun()
-
-from seqprep import nextSeqClass
-b = nextSeqClass.NextSeq("140915_NS500422_0028_AH13EWBGXX")
-b.verbose=True
-b.summarizeDemuxResults()
 

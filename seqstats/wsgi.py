@@ -13,7 +13,7 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "seqstats.settings")
 
-path = '/n/sw/www/seqstats'
+path = '/n/sw/www/seqtools'
 if path not in sys.path:
     sys.path.append(path)
 
