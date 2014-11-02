@@ -160,7 +160,7 @@ class IlluminaNextGen(object):
             if self.verbose: print line
         fh.close()
 
-    def setPermissions(self, item):
+    def setPermissions(self, item):  
         filePermissions = stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IWGRP|stat.S_IROTH
         if path.isfile(item):
             os.chmod(item, filePermissions)
@@ -209,7 +209,7 @@ class IlluminaNextGen(object):
         data = fh.read(100)
         fh.close()
         if data:
-            return true #gz file contains data
+            return True #gz file contains data
         else:
-            return false  
+            return False  
             

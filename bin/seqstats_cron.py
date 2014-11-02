@@ -1,6 +1,6 @@
 #!/usr/bin/env python 
 from optparse import OptionParser
-from seqstats import addSeqRun
+from seqstats import addSeqRun, settings
 from seqhub import hUtil, hSettings
 import sys, os, re, time, traceback
 import os.path as path
@@ -19,8 +19,6 @@ def seqstatsOnNew(argv):
 
     if len(args) != 0:
         parser.error("Expected 0 input arguments, " + str(len(args)) + " provided. Use -h to see usage.")
-
-    cronLog = hSettings.SEQ_CRONLOG
 
     required = ["InterOp", "RunInfo.xml", "SampleSheet.csv", "RTAComplete.txt"]  #files that must be in run folder
     interopRequired = ["QMetricsOut.bin", "TileMetricsOut.bin"]  #files that must be in <run>/InterOp folder
@@ -45,11 +43,11 @@ def seqstatsOnNew(argv):
                      myArgs = [runName, "--no-db-rewrite", "--no-hist-rewrite", "-d", options.primaryParent]
                      if options.verbose: myArgs.append("--verbose")
                      logMsg = time.strftime("%c") + "  Running addSeqRun.add() on " + runName + " with args: " + ' '.join(myArgs)
-                     hUtil.append(logMsg, cronLog, echo = options.verbose)
+                     hUtil.append(logMsg, settings.LOGFILE, echo = options.verbose)
                      addSeqRun.add(myArgs)  
                 except:
                      excpStr = runName + "\n\n" + traceback.format_exc()
-                     hUtil.append("Seqstats Exception\n" + excpStr, cronLog, echo = options.verbose)
+                     hUtil.append("Seqstats Exception\n" + excpStr, settings.LOGFILE, echo = options.verbose)
                      hUtil.email(hSettings.NOTIFY_EMAILS,"Seqstats Exception", excpStr)
                      return
 

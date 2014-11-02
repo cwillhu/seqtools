@@ -4,10 +4,11 @@ import os.path as path
 SEQPREP_ROOT = "/n/sw/www/seqtools/seqprep"
 
 ##
-# Directory settings:
+# Main settings:
 ##
 
 LOGDIR_PARENT = "/n/informatics_external/seq/seqprep_log"
+LOGFILE = path.join(LOGDIR_PARENT, "log.txt")
 PROCESSING_PARENT = "/n/seqcfs/sequencing/analysis_in_progress"
 FINISHING_PARENT = "/n/seqcfs/sequencing/analysis_finished"
 FINAL_PARENT = "/n/ngsdata"

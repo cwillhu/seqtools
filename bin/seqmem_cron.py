@@ -1,8 +1,7 @@
 #!/usr/bin/env python 
 from seqmem.util import scanDiskUsage, deleteOldRuns
 from optparse import OptionParser
-import os.path as path
-import datetime, sys
+import sys
 
 def main(argv):
     parser = OptionParser(usage="usage: %prog [options]")

@@ -289,9 +289,10 @@ class HiSeq(IlluminaNextGen):
                         if labelMatch:
                             sampLabel = labelMatch.group('sampLabel')
                             fileLabel = labelMatch.group('fileLabel')
-                            self.append("Concatenating " + sampLabel + " R"+readNumStr+" fastq files...", self.logFile)
                             mergeFile = path.join(outDir, sampLabel + '.R' + readNumStr + '.fastq.gz')
-                            componentFiles = [path.join(projectDir, sampDir, f) for f in os.listdir(sampDir) if re.match(fileLabel + '_[0-9]+.fastq.gz', f)]
+                            componentFiles = sorted([path.join(projectDir, sampDir, f) for f in os.listdir(sampDir) if re.match(fileLabel + '_[0-9]+.fastq.gz', f)])
+                            self.append("Concatenating " + sampLabel + " R"+readNumStr+" fastq component files:", self.logFile)
+                            self.append('\n'.join(['  %s' % path.basename(x) for x in componentFiles]), self.logFile)
                             fout = file(mergeFile, 'wb')
                             for componentFile in componentFiles:
                                 fin  = file(componentFile,'rb')
@@ -325,7 +326,8 @@ class HiSeq(IlluminaNextGen):
                 hUtil.mkdir_p(outDir)
             for filename in os.listdir(projectDir):
                 if re.match('\S+.fastq.gz', filename) and self.gzNotEmpty(path.join(projectDir,filename)):
-                    command = "module load centos6/fastqc-0.10.1; fastqc -t 4 --noextract --nogroup -o " + outDir + " " + path.join(projectDir,filename)
+                    command = "echo 'Analysis name: %s'; " % analysisName
+                    command += "module load centos6/fastqc-0.10.1; fastqc -t 4 --noextract --nogroup -o " + outDir + " " + path.join(projectDir,filename)
                     self.shell(command, self.logFile)
                 
     def calcCheckSums(self):
@@ -408,13 +410,11 @@ class HiSeq(IlluminaNextGen):
                            "with indices not in the SampleSheet are in the fastq file(s) labeled \"Undetermined.\"\n\n",
                            "We encourage users to download a local copy of their data, as run data will\n",
                            "eventually be removed from the ngsdata server.\n\nBest,\nChris\n\n"))
-            if self.verbose:
-                print self.demuxSummary + "\n\n" + self.letter
+            if self.verbose: print self.demuxSummary + "\n\n" + self.letter
+            self.notify('Seqprep terminated',self.runOutName + "\n\n" + self.demuxSummary + "\n\n" + self.letter)
 
-    def processRun(self):
+    def postProcess(self):
         try:
-            self.logOptions()
-            self.bcl2fastq()
             self.gatherFastq()
             self.countUndetIndices()
             self.fastQC()
@@ -425,10 +425,17 @@ class HiSeq(IlluminaNextGen):
             self.validateFinalDir()
             self.summarizeDemuxResults()
             self.DBupdate()
-            self.notify('Seqprep terminated',self.runOutName + "\n\n" + self.demuxSummary + "\n\n" + self.letter)
+        except:
+            self.notify('Seqprep Exception', "Error in " + self.runOutName + ":\n" + traceback.format_exc())
+            return
+
+    def processRun(self):
+        try:
+            self.logOptions()
+            self.bcl2fastq()
+            self.postProcess()
         except:
             if not path.isdir(path.dirname(self.logFile)): 
                 hUtil.mkdir_p(path.dirname(self.logFile))
-            errMsg = "Error in " + self.runOutName + ":\n" + traceback.format_exc()
-            self.notify('Seqprep Exception', errMsg)
+            self.notify('Seqprep Exception', "Error in " + self.runOutName + ":\n" + traceback.format_exc())
             return

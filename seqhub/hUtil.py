@@ -57,6 +57,9 @@ def runCmd(cmd):
     p.wait()
 
 def recursiveChmod(item, filePermissions, dirPermissions):
+    if path.isfile(item):
+        raise Exception('First input arg "%s" is a file. Expected directory.' % item)
+    os.chmod(item, dirPermissions)
     for root,dirs,files in os.walk(item):
         for d in dirs:
             os.chmod(path.join(root,d), dirPermissions)
@@ -74,6 +77,9 @@ def email(addresses, subject, message):
             raise(error)  #if there is anything written to stdout/stderr from this cmd, it will be an error
 
 def append(text, filename, echo = False):
+    parentDir = path.dirname(filename)
+    if not path.isdir(parentDir):
+        mkdir_p(parentDir)
     if echo: print text
     fh = open(filename, 'a')
     fh.write(text + "\n") #append text to file                                                                                                              

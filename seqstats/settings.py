@@ -12,13 +12,15 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 import os
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
-# Set location of raw run data 
 if BASE_DIR == '/Users/williams03/d/django/seqstats':
     RUN_HOME = '/Users/williams03/d/django/seqstats/seqstats/test/primary_data'
-    HIST_DIR = '/Volumes/informatics_external/seq/seqstats_hist'
+    HIST_DIR = '/Volumes/informatics_external/seq/seqstats_bkup'
+    LOGFILE = '/Volumes/informatics_external/seq/seqstats_log/log.txt'
 else:
     RUN_HOME = '/n/illumina01/primary_data'
-    HIST_DIR = '/n/informatics_external/seq/seqstats_hist'
+    HIST_DIR = '/n/informatics_external/seq/seqstats_bkup'
+    LOGFILE = '/n/informatics_external/seq/seqstats_log/log.txt'
+
 
 TEMPLATE_DIRS = ( BASE_DIR + "/seqstats/templates", )
 

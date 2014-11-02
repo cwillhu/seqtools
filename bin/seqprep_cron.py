@@ -1,6 +1,6 @@
 #!/usr/bin/env python 
 from optparse import OptionParser
-from seqprep import slurmProcessRun, processRun
+from seqprep import slurmProcessRun, processRun, settings
 from seqhub import hUtil, hSettings
 import sys, os, re, time, traceback
 import os.path as path
@@ -19,8 +19,6 @@ def seqprepOnNew(argv):
 
     if len(args) != 0:
         parser.error("Expected 0 input arguments, " + str(len(args)) + " provided. Use -h to see usage.")
-
-    cronLog = hSettings.SEQ_CRONLOG
 
     required = ["InterOp", "RunInfo.xml", "SampleSheet.csv", "RTAComplete.txt"]  #files that must be in run folder
     interopRequired = ["QMetricsOut.bin", "TileMetricsOut.bin"]  #files that must be in <run>/InterOp folder
@@ -48,11 +46,11 @@ def seqprepOnNew(argv):
                 if options.verbose: myArgs.append("--verbose")
                 if options.slurm:
                      logMsg = time.strftime("%c") + "  Running slurmProcessRun.slurmProcess() on " + runName + " with args: " + ' '.join(myArgs)
-                     hUtil.append(logMsg, cronLog, echo = options.verbose)
+                     hUtil.append(logMsg, settings.LOGFILE, echo = options.verbose)
                      slurmProcessRun.slurmProcess(myArgs)
                 else:
                      logMsg = time.strftime("%c") + "  Running processRun.process() on " + runName + " with args: " + ' '.join(myArgs)
-                     hUtil.append(logMsg, cronLog, echo = options.verbose)
+                     hUtil.append(logMsg, settings.LOGFILE, echo = options.verbose)
                      processRun.process(myArgs)
 
 if __name__ == "__main__":

@@ -14,7 +14,6 @@ ignored = locale.setlocale(locale.LC_ALL, '') # empty string for platform's defa
 class NextSeq(IlluminaNextGen):
     def __init__(self, runName, **kwargs):
         IlluminaNextGen.__init__(self, runName, **kwargs)
-        self.clearDir(self.logDir)
         self.runparametersFile = path.join(self.primaryDir, "RunParameters.xml")
         self.minTrimmedReadLength = settings.NEXTSEQ["minTrimmedReadLength"]
         self.maskShortAdapterReads = settings.NEXTSEQ["maskShortAdapterReads"]
@@ -45,7 +44,7 @@ class NextSeq(IlluminaNextGen):
             self.copy(self.logFile, logBkup)
             self.setPermissions(logBkup)
             self.deleteItem(self.logFile)
-        self.append(optionsStr, self.logFile)
+        self.append(optionsStr, self.logFile)  #write NextSeq input options to log file.
 
     def parseSampleSheet(self):
         with open(self.samplesheetFile,"r") as fh:
@@ -287,6 +286,7 @@ class NextSeq(IlluminaNextGen):
             samp = cols[2].text
             reads = cols[8].text
             perc = cols[11].text
+            if not perc: perc = 0  
             if lane not in laneStats.keys():
                 laneStats[lane] = {'reads': 0, 'perc': 0}
             laneStats[lane]['reads'] += int(re.sub(',','',reads))
@@ -312,8 +312,8 @@ class NextSeq(IlluminaNextGen):
                        "Reads with indices not in SampleSheet.csv are in the fastq file labeled\n", 
                        "\"Undetermined_S0.\" We encourage users to download a local copy of their\n",
                        "data, as run data will eventually be removed from the ngsdata server.\n\nBest,\nChris\n\n"))
-        if self.verbose:
-            print self.demuxSummary + "\n" + self.letter
+        if self.verbose: print self.demuxSummary + "\n" + self.letter
+        self.notify('Seqprep terminated',self.runOutName + '\n\n' + self.demuxSummary + '\n\n' + self.letter)
 
     def processRun(self):
         try:
@@ -329,7 +329,6 @@ class NextSeq(IlluminaNextGen):
             self.validateFinalDir()  
             self.summarizeDemuxResults()  
             self.DBupdate()
-            self.notify('Seqprep terminated',self.runOutName + '\n\n' + self.demuxSummary + '\n\n' + self.letter)
         except:
             if not path.isdir(path.dirname(self.logFile)):
                 hUtil.mkdir_p(path.dirname(self.logFile))
