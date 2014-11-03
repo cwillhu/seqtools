@@ -401,17 +401,17 @@ class HiSeq(IlluminaNextGen):
             rowFormat = '    ' + '  |  '.join(['%%%ds' % width for width in colWidths ]) + '\n'
             for row in srows:
                 summary.append(rowFormat % tuple(row))
-            self.demuxSummary = ''.join(summary)
-            self.letter = ''.join(("\n\nHi all,\n\n",
-                           "The fastq files with the read sequences of run " + self.runName + " are available at:\n\n",
-                           "https://software.rc.fas.harvard.edu/ngsdata/" + self.runOutName + "\n\n",
-                           "or under /n/ngsdata/" + self.runOutName + " on the cluster.\n\n",
-                           "Summary statistics can be found in Basecall_Stats/Demultiplex_Stats.htm. Reads\n",
-                           "with indices not in the SampleSheet are in the fastq file(s) labeled \"Undetermined.\"\n\n",
-                           "We encourage users to download a local copy of their data, as run data will\n",
-                           "eventually be removed from the ngsdata server.\n\nBest,\nChris\n\n"))
-            if self.verbose: print self.demuxSummary + "\n\n" + self.letter
-            self.notify('Seqprep terminated',self.runOutName + "\n\n" + self.demuxSummary + "\n\n" + self.letter)
+        self.demuxSummary = ''.join(summary)
+        self.letter = ''.join(("\n\nHi all,\n\n",
+                               "The fastq files with the read sequences of run " + self.runName + " are available at:\n\n",
+                               "https://software.rc.fas.harvard.edu/ngsdata/" + self.runOutName + "\n\n",
+                               "or under /n/ngsdata/" + self.runOutName + " on the cluster.\n\n",
+                               "Summary statistics can be found in Basecall_Stats/Demultiplex_Stats.htm. Reads\n",
+                               "with indices not in the SampleSheet are in the fastq file(s) labeled \"Undetermined.\"\n\n",
+                               "We encourage users to download a local copy of their data, as run data will\n",
+                               "eventually be removed from the ngsdata server.\n\nBest,\nChris\n\n"))
+        if self.verbose: print self.demuxSummary + "\n\n" + self.letter
+        self.notify('Seqprep terminated',self.runOutName + "\n\n" + self.demuxSummary + "\n\n" + self.letter)
 
     def postProcess(self):
         try:
