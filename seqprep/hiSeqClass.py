@@ -397,7 +397,7 @@ class HiSeq(IlluminaNextGen):
                     perc = cols[13].text
                     srows.append([samp, reads, perc])
             scols = zip(*srows)
-            colWidths = [ max(len(elem) for elem in col) for col in scols ]
+            colWidths = [ max( [len(elem) if elem else 0 for elem in col] ) for col in scols ]
             rowFormat = '    ' + '  |  '.join(['%%%ds' % width for width in colWidths ]) + '\n'
             for row in srows:
                 summary.append(rowFormat % tuple(row))
