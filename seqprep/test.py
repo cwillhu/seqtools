@@ -3,15 +3,42 @@ import pdb; pdb.run('from seqprep import nextSeqClass; a=nextSeqClass.NextSeq("1
 
 
 from seqprep import hiSeqClass
-b = hiSeqClass.HiSeq("")
+b = hiSeqClass.HiSeq(run, verbose=True)
 b.processRun()
 
 from seqprep import nextSeqClass
-b = nextSeqClass.NextSeq("")
+b = nextSeqClass.NextSeq(run, verbose=True)
 b.processRun()
 
 #----------------------------------------
 
+#Gracida's run.
+#running in 'second':
+run = '141011_D00365_0362_BC4PPLANXX'
+from seqprep import hiSeqClass
+b = hiSeqClass.HiSeq(run, suffix = "_2", verbose = True)
+b.copyToFinal()
+b.setPermissions(self.finalDir)
+b.validateFinalDir()
+b.summarizeDemuxResults()
+
+
+#running in 'third':
+run = "141120_NS500422_0053_AH2GJTBGXX"
+from seqprep import nextSeqClass
+b = nextSeqClass.NextSeq(run)
+b.processRun()
+
+#rerun andres' run. Lane 1 has already been rerun once?.
+run = "141011_D00365_0361_AC4R08ANXX"
+from seqprep import hiSeqClass
+b = hiSeqClass.HiSeq(run, suffix = "_2", verbose=True)
+b.processRun()
+
+run = "141119_D00365_0388_AC57TRANXX"
+from seqprep import hiSeqClass
+b = hiSeqClass.HiSeq(run, verbose = True)
+b.processRun()
 
 run = "141028_D00365_0368_AHAY0NADXX"
 from seqprep import hiSeqClass
@@ -24,13 +51,6 @@ b.summarizeDemuxResults()
 
 from seqprep import nextSeqClass
 b = nextSeqClass.NextSeq("141027_NS500422_0045_AH02RCAFXX")
-b.processRun()
-
-run = '141018_D00365_0364_BC57K7ANXX'
-
-run = '141017_D00365_0363_AC57WLANXX'
-from seqprep import hiSeqClass
-b = hiSeqClass.HiSeq(run, suffix = '_2', verbose=True)
 b.processRun()
 
 run = '141028_D00365_0369_BHAWYRADXX'

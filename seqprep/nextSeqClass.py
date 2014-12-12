@@ -119,6 +119,7 @@ class NextSeq(IlluminaNextGen):
                             d['index2Length'] = len(secondIndex)
                         elif len(secondIndex) != d['index2Length']:
                             raise Exception("Multiple index2 lengths found in samplesheet")
+                vals[8] = '' # suppress 'Sample_Project' field  (changes the output directory structure)
             ss[i] = ','.join(vals)
 
         if ss != ss_orig: #if ss is different from original, move old samplesheet to backup file and write new one.

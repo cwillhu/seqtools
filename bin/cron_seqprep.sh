@@ -6,4 +6,4 @@ if [[ $TYP != "function" ]]; then
 fi
 
 . /n/sw/www/seqtools/bin/setup.sh
-/n/sw/www/seqtools/bin/seqprep_cron.py ${@-}
+/n/sw/www/seqtools/bin/cron_seqprep.py ${@-}

@@ -30,8 +30,9 @@ def seqstatsOnNew(argv):
             runPath = path.join(options.primaryParent,runName)
             items = os.listdir(runPath) #get list of directory contents
             #check that we haven't examined this run folder before, and then check that required files are present:
-            if 'seq_seen.txt' not in items \
-                    and 'seqstats_seen.txt' not in items \
+            if 'seqstats_seen.txt' not in items \
+                    and 'seqstats_skip.txt' not in items \
+                    and 'seq_skip.txt' not in items \
                     and len(intersect(items, required)) == len(required) \
                     and len(intersect(items, runParametersOptions)) == 1 \
                     and len(intersect(os.listdir(path.join(runPath, "InterOp")), interopRequired)) == len(interopRequired):

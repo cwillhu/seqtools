@@ -1,4 +1,4 @@
-import os, calendar, datetime, re
+import os, calendar, datetime, re, shutil, operator
 import os.path as path
 from os.path import join, getsize
 from seqhub import hUtil, hSettings 
@@ -45,50 +45,20 @@ def months2days(number_of_months=3):
         total = total + days_in_month
     return total
 
-def modDate(filename): #get modification time. Note: simply editing subfiles/directories does NOT change the mod time of the top directory
+def modDate(filename): #get modification time. 
+    #Note: Changing the directory name, editting subfiles/directories does NOT change the mod time of the top directory
     ts = os.path.getmtime(filename)
     return datetime.datetime.fromtimestamp(ts)
 
-def deleteOldRuns(myDir, maxDays, verbose = False):
-    if verbose: print 'Scanning %s ...' % myDir
+def runNameMatch(name):
+    #allow extra chars at end of run name, in case it has a suffix:
+    if re.match('[0-9]{6}_[0-9A-Za-z]+_[0-9A-Za-z]+_[0-9A-Za-z]{10}', name) and not re.search('_ToDelete$', name):  #re.match() matches from beg. of string
+        return True
+    return False
 
-    if (maxDays < 60 and re.search('ngsdata', myDir)) \
-            or (maxDays < 120 and re.search('analysis_in_progress', myDir)):
-        raise Exception('Unexpected maxDays, myDir parameters: "%s", "%s"' % (maxDays, myDir))
-    elif re.search('analysis_finished', myDir):
-        raise Exception('Runs in /n/seqcfs/sequencing/analysis_finished should be deleted manually after retention of >= 2 years')
+def ageInDays(filePath): #days elasped since modfification date
+    today = datetime.datetime.today()
+    modified_date = modDate(filePath)
+    elapsed = today - modified_date
+    return elapsed.days
 
-    for item in os.listdir(myDir):
-        numDeleted = 0
-        #allow extra chars at end of run name, in case it has a suffix:
-        if re.match('[0-9]{6}_[0-9A-Za-z]+_[0-9A-Za-z]+_[0-9A-Za-z]{10}', item) \
-                and not re.search('_ToDelete$', item):
-            runName = item
-            runPath = path.join(myDir,runName)
-            if verbose: 'deleteOldRuns: Checking age of %s ...' % runPath
-            today = datetime.datetime.today()
-            modified_date = modDate(runPath)
-            elapsed = today - modified_date
-            if elapsed.days > maxDays:  #mark run for deletion  (after debugging, change this to an actual delete)
-                newRunPath = path.join(myDir,runName + '_ToDelete')
-                if verbose: print '  Renaming %s to %s (elapsed: %s days)' % (runPath, newRunPath, elapsed.days)
-                os.rename(runPath, newRunPath)
-                numDeleted += 1
-
-    if verbose:
-        if numDeleted == 0:
-            print 'Found no run folders in %s to delete' % myDir
-        else:
-            print 'Deleted %s folders in %s' % (numDeleted, myDir)
-
-def scanDiskUsage(dirList, verbose = False):
-    message = ''
-    for myDir in dirList:
-        perc = diskPercentUsage(myDir)
-        if verbose: print 'Disk usage for %s: %.2f %%\n' % (myDir, perc)
-        if perc > 95.0:
-            message += 'Disk usage for %s: %.2f %%\n' % (myDir, perc)
-
-    if message:
-        hUtil.email(hSettings.NOTIFY_EMAILS, 'SeqMem Warning: disk usage > 95%', message)
-    

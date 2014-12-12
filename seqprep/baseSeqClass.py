@@ -53,6 +53,13 @@ class IlluminaNextGen(object):
         self.samplesheetFile = path.join(self.primaryDir, "SampleSheet.csv")
         self.runinfoFile = path.join(self.primaryDir, "RunInfo.xml")
 
+        #touch status file to prevent automatic processing of this run by cron job
+        statusFile = path.join(self.primaryDir, 'seqprep_seen.txt')
+        if not path.isfile(statusFile):
+            hUtil.touch(statusFile)
+            self.setPermissions(statusFile)
+
+
     def logOptions(self):
         optionsStr = "Base Parameters:\n" \
             + "runName:              " + self.runName                   + "\n" \
