@@ -47,19 +47,15 @@ def add(argv):  #add a new run to DB
     runHistDir = path.join(histDir,runName)
     if path.isdir(runHistDir):
         if options.verbose: print "Run " + runName + " already present in seqstats_hist dir: " + histDir
-        if options.noHistRewrite:
-            if options.verbose: print ("Exiting.")
-            return
-        resp = raw_input("Overwrite current run history with run files in " + runPath + "? [y/n] ")
-        if resp.lower().startswith('n'):
-            if options.verbose: print ("Exiting.")
-            return
-        else: 
-            if options.verbose: print ("Deleting old history directory " + runHistDir)
-            shutil.rmtree(runHistDir, ignore_errors=True)
-    if options.verbose: print "Copying run files to " + histDir + " ..."
-    util.copyRunFiles(runPath, histDir)
+        if not options.noHistRewrite:
+            resp = raw_input("Overwrite current run history with run files in " + runPath + "? [y/n] ")
+            if resp.lower().startswith('y'):
+                if options.verbose: print ("Deleting old history directory " + runHistDir)
+                shutil.rmtree(runHistDir, ignore_errors=True)
+                if options.verbose: print "Copying run files to " + histDir + " ..."
+                util.copyRunFiles(runPath, histDir)
     if options.noDB: 
+        if options.verbose: print 'Exiting.'
         return
 
     try:
@@ -89,6 +85,7 @@ def add(argv):  #add a new run to DB
     if options.verbose: print "Parsing run files for " + runName
 
     #Read run stats in binary files
+    print 'Run: %s' % runPath
     myDataset = InteropDataset(runPath)
     tile = myDataset.TileMetrics()
     quality = myDataset.QualityMetrics()

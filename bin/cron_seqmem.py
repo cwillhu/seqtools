@@ -18,7 +18,7 @@ def main(argv):
 
     moveOldPrimaryToArchive(20, options.verbose)                                       #move runs from primary_data to archive/primary_data after 20 days
 
-    deleteOldRuns('/n/illumina01/archive/primary_data', 60, copyInSEQCFS = True, verbose = options.verbose)  #delete runs in specified dir after n days
+    deleteOldRuns('/n/illumina01/archive/primary_data', 60, copyInSEQCFS = False, verbose = options.verbose)  #delete runs in specified dir after n days
     deleteOldRuns('/n/seqcfs/sequencing/analysis_in_progress', 120, copyInSEQCFS = True, verbose=options.verbose) 
 
 

@@ -52,7 +52,9 @@ def modDate(filename): #get modification time.
 
 def runNameMatch(name):
     #allow extra chars at end of run name, in case it has a suffix:
-    if re.match('[0-9]{6}_[0-9A-Za-z]+_[0-9A-Za-z]+_[0-9A-Za-z]{10}', name) and not re.search('_ToDelete$', name):  #re.match() matches from beg. of string
+
+    #if re.match('[0-9]{6}_[0-9A-Za-z]+_[0-9A-Za-z]+_[0-9A-Za-z]{10}', name) and not re.search('_ToDelete$', name): 
+    if re.match('[0-9]{6}_[0-9A-Za-z]+_[0-9A-Za-z]+_[0-9A-Za-z]{10}', name): 
         return True
     return False
 

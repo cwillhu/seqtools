@@ -5,5 +5,5 @@ if [[ $TYP != "function" ]]; then
   source /etc/profile
 fi
 
-. /n/sw/www/seqtools/bin/setup.sh
+. /n/sw/www/seqtools/setup.sh
 /n/sw/www/seqtools/bin/cron_seqstats.py ${@-}

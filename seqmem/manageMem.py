@@ -52,9 +52,12 @@ def deleteOldRuns(myDir, maxDays, copyInSEQCFS = True, verbose = False):
                 if copyInSEQCFS and not path.isdir(path.join('/n/seqcfs/sequencing/analysis_finished/',runName)):
                     raise Exception('Attempt to delete run in %s which has no copy in /n/seqcfs/sequencing/analysis_finished: %s (age: %s days)' 
                         % (myDir, runName, elapsedDays))
-                newRunPath = path.join(myDir,runName + '_ToDelete')
-                if verbose: print '  Renaming %s to %s (elapsed: %s days)' % (runPath, newRunPath, elapsedDays)
-                os.rename(runPath, newRunPath)
+                #newRunPath = path.join(myDir,runName + '_ToDelete')
+                #if verbose: print '  Renaming %s to %s (elapsed: %s days)' % (runPath, newRunPath, elapsedDays)
+                #os.rename(runPath, newRunPath)
+                if verbose:
+                    print '  Deleting ' + runPath
+                shutil.rmtree(runPath, ignore_errors=True)
                 numDeleted += 1
     if verbose:
         if numDeleted == 0:

@@ -12,6 +12,12 @@ b.processRun()
 
 #----------------------------------------
 
+run = '141223_SN343_0503_AC5K1MACXX'
+from seqprep import hiSeqClass
+b = hiSeqClass.HiSeq(run, suffix='_2', verbose=True)
+b.processRun()
+
+
 #Gracida's run.
 #running in 'second':
 run = '141011_D00365_0362_BC4PPLANXX'

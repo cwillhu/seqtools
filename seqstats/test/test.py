@@ -1,5 +1,12 @@
-#-------------------
 
+
+from seqstats import addSeqRun
+runName = '141125_D00365_0389_AHB6BCADXX'
+myArgs = [runName, "--no-db-rewrite", "--no-hist-rewrite", "-d", "/n/informatics_external/seq/seqstats_bkup", "--verbose"]
+addSeqRun.add(myArgs)
+
+
+#-------------------
 # For 141125_D00365_0389_AHB6BCADXX, qual_df 'lane' field ranges from 1 to 209, instead of 1 to 2 as we would expect. 
 #
 # Need updated format spec for QMetricsOut.bin from Rey? 
@@ -17,13 +24,15 @@
 import pandas
 from illuminate import InteropDataset
 
-runPath = '/n/illumina01/primary_data/141125_D00365_0389_AHB6BCADXX'
+runPath = '/n/informatics_external/seq/seqstats_bkup/141125_D00365_0389_AHB6BCADXX'
 
 myDataset = InteropDataset(runPath)
 tile = myDataset.TileMetrics()
 quality = myDataset.QualityMetrics()
 tile_df = tile.df
 qual_df = quality.df
+
+
 
 for index, row in qual_df.iterrows():
     i = int(row['lane'])

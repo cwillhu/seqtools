@@ -124,7 +124,7 @@ class InteropQualityMetrics(InteropBinParser):
         # QualityMetrics
         # Read records bytewise per specs in technote_rta_theory_operations.pdf from ILMN
         #
-        #   byte 0: file version number (4)
+        #   byte 0: file version number (4 or 5)
         #   byte 1: length of each record
 
         self.apparent_file_version = bs.read('uintle:8')
@@ -150,36 +150,38 @@ class InteropQualityMetrics(InteropBinParser):
                     self.data['q'+str(qual)].append(bs.read('uintle:32'))
         elif self.apparent_file_version == 5:
             #   byte 2: quality score binning (byte flag representing if binning was on)
-            #     if (byte 2 == 1) // quality score binning on
-            #   byte 3: number of quality score bins, B
             qscore_binning_flag = bs.read('uintle:8') 
-            B = bs.read('uintle:8') 
+            
+            #   if (byte 2 == 1) // quality score binning on
+            if qscore_binning_flag == 1:
+                #   byte 3: number of quality score bins, B
+                B = bs.read('uintle:8') 
 
-            #   bytes 4 – (4+B-1): lower boundary of quality score bins
-            #   bytes (4+B) – (4+2*B-1): upper boundary of quality score bins
-            #   bytes (4+2*B) – (4+3*B-1): remapped scores of quality score bins
+                #   bytes 4 – (4+B-1): lower boundary of quality score bins
+                #   bytes (4+B) – (4+2*B-1): upper boundary of quality score bins
+                #   bytes (4+2*B) – (4+3*B-1): remapped scores of quality score bins
+                lbounds = list()  #Example lower bounds: [1, 10, 20, 25, 30, 35, 40]
+                for i in range(0,B):
+                    lbounds.append(bs.read('uintle:8'))
+                if qscore_binning_flag == 1 and 30 not in lbounds:
+                    raise Exception("Q-score 30 is not a lower bound in q-score bins! Count of q-scores >= 30 will be incorrect.")
+                ubounds = list()
+                for i in range(0,B):
+                    ubounds.append(bs.read('uintle:8'))
+                rscores = list()
+                for i in range(0,B):
+                    rscores.append(bs.read('uintle:8'))
 
-            lbounds = list()  #Example lower bounds: [1, 10, 20, 25, 30, 35, 40]
-            for i in range(0,B):
-                lbounds.append(bs.read('uintle:8'))
-
-            ubounds = list()
-            for i in range(0,B):
-                ubounds.append(bs.read('uintle:8'))
-
-            rscores = list()
-            for i in range(0,B):
-                rscores.append(bs.read('uintle:8'))
-
-            if qscore_binning_flag == 1 and 30 not in lbounds:
-                raise Exception("Q-score 30 is not a lower bound in q-score bins! Count of q-scores >= 30 will be incorrect.")
+                bitsRemaining = bs.len - (3*8 + 3*8*B)
+            else:
+                bitsRemaining = bs.len - (3*8)  #three 8-bit items read so far: version, recordlen, qscore_binning_flag
 
             #   The remaining bytes are for the records, with each record in this format:
             #     2 bytes: lane number (uint16)
             #     2 bytes: tile number (uint16)
             #     2 bytes: cycle number (uint16)
             #     4 x 50 bytes: number of clusters assigned score (uint32) Q1 through Q50
-            bitsRemaining = bs.len - (4*8 + 3*8*B)
+            
             for i in range(0,(bitsRemaining / (recordlen * 8))):
                 lane = bs.read('uintle:16')
                 tile = bs.read('uintle:16')
