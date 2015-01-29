@@ -1,6 +1,6 @@
 set -eu
 
-. setup.sh
+seqsetup
 
 #runs=$(basename $(ls -d /Users/williams03/d/django/seqstats/seqstats/test/primary_data/14*))
 runs="140730_NS500422_0002_AH102MBGXX
@@ -15,5 +15,5 @@ runs="140730_NS500422_0002_AH102MBGXX
 
 for run in $runs; do
   echo $run
-  ../addrun.py $run
+  addrun $run
 done
