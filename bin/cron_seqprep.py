@@ -43,7 +43,7 @@ def seqprepOnNew(argv):
                 touch(path.join(runPath, "seqprep_seen.txt"))  #mark run as seen by seqprep
 
                 #send notification email
-                hUtil.email(hSettings.NOTIFY_EMAILS,"Found new run", "Processing:\n" + runName)
+                hUtil.email(hSettings.SEQTOOLS_USERS_EMAILS,"Found new run", "Processing:\n" + runName)
 
                 #start seqprep for this run
                 myArgs = [runName, "--primary", primaryParent]

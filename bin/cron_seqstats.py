@@ -49,7 +49,7 @@ def seqstatsOnNew(argv):
                 except:
                      excpStr = runName + "\n\n" + traceback.format_exc()
                      hUtil.append("Seqstats Exception\n" + excpStr, settings.LOGFILE, echo = options.verbose)
-                     hUtil.email(hSettings.NOTIFY_EMAILS,"Seqstats Exception", excpStr)
+                     hUtil.email(hSettings.SEQTOOLS_USERS_EMAILS,"Seqstats Exception", excpStr)
                      return
 
 if __name__ == "__main__":

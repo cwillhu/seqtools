@@ -99,3 +99,5 @@ def intersect(a, b):
 def touch(fname):
     open(fname, 'a').close()
 
+def unique(a):
+     return list(set(a))

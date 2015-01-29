@@ -85,7 +85,6 @@ def add(argv):  #add a new run to DB
     if options.verbose: print "Parsing run files for " + runName
 
     #Read run stats in binary files
-    print 'Run: %s' % runPath
     myDataset = InteropDataset(runPath)
     tile = myDataset.TileMetrics()
     quality = myDataset.QualityMetrics()

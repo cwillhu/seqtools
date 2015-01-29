@@ -42,13 +42,13 @@ def parseOptions(argv):
                       default=settings.NEXTSEQ["minTrimmedReadLength"], action="store", type = "int", dest="minTrimmedReadLength")
 
     #Slurm options:
-    parser.add_option("-i","--time",help="Runtime to reserve on the cluster. Format: HH:MM:SS. Default: %default",
+    parser.add_option("-i","--time",help="Runtime to reserve on the cluster. Format: HH:MM:SS. Default: %default. (Unimplemented option)",
                       default=settings.SLURM["time"], action="store", type = "string", dest="time")
-    parser.add_option("-r","--partition",help="Name of cluster partition to submit to. Default: %default",
+    parser.add_option("-r","--partition",help="Name of cluster partition to submit to. Default: %default. (Unimplemented option)",
                       default=settings.SLURM["partition"], action="store", type = "string", dest="partition")
-    parser.add_option("-j","--jobName",help="Job name. Default: %default",
+    parser.add_option("-j","--jobName",help="Job name (unimplemented). Default: %default. (Unimplemented option)",
                       default=settings.SLURM["job-name"], action="store", type = "string", dest="jobName")
-    parser.add_option("-u","--users",help="Comma-separated list of RC users to send success/failure job notifications to. Default: %default",
+    parser.add_option("-u","--users",help="Comma-separated list of RC users to be sent SLURM notifications. Default: %default. (Unimplemented option)",
                       default=settings.USERS_STRING,action="store", type = "string", dest="usersString")
     (options, args) = parser.parse_args(argv)
 
