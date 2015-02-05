@@ -1,10 +1,10 @@
 #!/usr/bin/env python 
-from seqprep import nextSeqClass, hiSeqClass, settings, util
+from seqprep import nextSeqClass, hiSeqClass, settings, opts
 from seqhub import hSettings
 import sys, re
 
 def process(argv): #process raw sequencing data
-    options, runName = util.parseOptions(argv)
+    options, runName = opts.parseOptions(argv)
     nameMatch = re.match('^[0-9]{6}_([0-9A-Za-z]+)_', runName)
     machine_id = nameMatch.group(1)
     machine_type = hSettings.MACHINE_TYPE[machine_id]

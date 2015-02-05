@@ -1,4 +1,5 @@
-import subprocess, sys, os, select 
+import subprocess, sys, os, select, stat
+from lxml import etree
 import os.path as path
 import shutil, errno
 
@@ -86,6 +87,8 @@ def append(text, filename, echo = False):
     fh.close()
 
 def copy(src, dst):  #copy a file or directory.
+    if not path.isdir(path.dirname(dst)):
+        mkdir_p(path.dirname(dst))
     try:
         shutil.copytree(src, dst)
     except OSError as exc:
@@ -101,3 +104,39 @@ def touch(fname):
 
 def unique(a):
      return list(set(a))
+
+def setPermissions(item):
+    filePermissions = stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IWGRP|stat.S_IROTH
+    if path.isfile(item):
+        os.chmod(item, filePermissions)
+    elif path.isdir(item):
+        dirPermissions = stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IWGRP|stat.S_IXGRP|stat.S_IRUSR|stat.S_IROTH|stat.S_IXOTH
+        recursiveChmod(item, filePermissions, dirPermissions)
+
+def deleteItem(item):
+    if path.isdir(item):
+        shutil.rmtree(item, ignore_errors=True)
+    elif path.isfile(item):
+        os.remove(item)
+
+
+def parseRunInfo(rifile):
+    with open (rifile, 'r') as myfile:
+        xmlstr=myfile.read().replace('\n', '')
+
+    root = etree.fromstring(xmlstr)
+    datetext=root.find('Run/Date').text
+
+    reads = root.find('Run/Reads').getchildren()
+    rdict = dict()
+    for read in reads:
+        read_num = read.attrib['Number']
+        rdict["Read" + read_num] = dict()
+        rdict["Read" + read_num]['is_index'] = read.attrib['IsIndexedRead']
+        rdict["Read" + read_num]['num_cycles'] = read.attrib['NumCycles']
+
+    return rdict, datetext
+
+
+
+

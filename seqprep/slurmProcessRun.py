@@ -1,11 +1,11 @@
 #!/usr/bin/env python 
-from seqprep import settings, util
+from seqprep import settings, opts
 from seqhub import hUtil
 import sys, re
 import os.path as path
 
 def slurmProcess(argv): #create slurm script that calls processRun.py with commandline arguments
-    options, runName = util.parseOptions(argv)
+    options, runName = opts.parseOptions(argv)
     if options.suffix:
         runOutName = runName + options.suffix
     else:

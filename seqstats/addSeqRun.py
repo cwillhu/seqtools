@@ -6,7 +6,7 @@ from seqstats import settings, stats, util
 from seqstats.models import SeqRun, Lane
 from django.core.serializers.json import DjangoJSONEncoder
 from optparse import OptionParser
-from seqhub import hSettings
+from seqhub import hSettings, hUtil, sampleSheetClass
 import shutil
 import time, json
 import sys, re, os
@@ -22,18 +22,17 @@ def add(argv):  #add a new run to DB
     parser = OptionParser(usage="usage: %prog [options] <run_name>")
 
     parser.add_option("-f","--force", help="Rewrite current DB contents with new run and associated lanes. Default: %default", 
-                      default=False, action="store_true", dest="force")
+                                             default=False, action="store_true", dest="force")
     parser.add_option("-b","--no-db-rewrite",help="Do not overwrite any existing runs and associated lanes in DB. Default: %default",
-                      default=False, action="store_true", dest="noDBrewrite")
+                                             default=False, action="store_true", dest="noDBrewrite")
     parser.add_option("-t","--no-hist-rewrite",help="Do not overwrite any existing run files in history directory. Default: %default",
-                      default=False, action="store_true", dest="noHistRewrite")
+                                             default=False, action="store_true", dest="noHistRewrite")
     parser.add_option("-c","--copy-only",help="Copy run files to history directory. Do not write to database. Default: %default",
-                      default=False, action="store_true", dest="noDB")
+                                             default=False, action="store_true", dest="noDB")
     parser.add_option("-v","--verbose", help="Verbose mode. Default: %default",
-                      default=False, action="store_true", dest="verbose")
+                                             default=False, action="store_true", dest="verbose")
     parser.add_option("-d","--dir", help="Directory containing run folder. Default: %default",
-                      default=hSettings.PRIMARY_PARENT, action="store", type="string",  dest="primaryParent")
-
+                                             default=hSettings.PRIMARY_PARENT, action="store", type="string",  dest="primaryParent")
     options, args = parser.parse_args(argv)
     if len(args) != 1:
         parser.error('Expected one input argument, found %s: %s' % (len(args), ' '.join(args)))
@@ -91,10 +90,11 @@ def add(argv):  #add a new run to DB
     quality_summary = quality.read_qscore_results
     layout = tile.flowcell_layout
 
-    #get specs from RunInfo.xml and SampleSheet.csv
+    #make specs from RunInfo.xml and SampleSheet.csv  (specs dict will be saved as json in DB)
     specs = dict()
-    specs['SampleSheet'] = stats.parseSampleSheet(runPath + "/SampleSheet.csv")
-    reads, datetext = stats.parseRunInfo(runPath + "/RunInfo.xml")
+    SampleSheet = sampleSheetClass.SampleSheet(path.join(runPath, 'SampleSheet.csv'))
+    specs['SampleSheet'] = SampleSheet.contentString
+    reads, datetext = hUtil.parseRunInfo(path.join(runPath, 'RunInfo.xml'))
     specs['Reads'] = reads
 
     #get machine name
@@ -122,10 +122,10 @@ def add(argv):  #add a new run to DB
     run.save()
 
     perc_q_ge_30_list = list()
-    for i in range(1, len(lanes)+1):  #lanes is a dict with keys 1, 2, etc...
-        ldata = lanes[i]
+    for laneInt in lanes:
+        ldata = lanes[laneInt]
         myLane = Lane()
-        myLane.lane_num = i
+        myLane.lane_num = laneInt
         myLane.run_name = runName
         myLane.num_clusters = ldata["num_clusters"]
         myLane.num_clusters_pf = ldata["num_clusters_pf"]
@@ -138,12 +138,14 @@ def add(argv):  #add a new run to DB
         myLane.date = date(int('20' + datetext[:2]), int(datetext[2:4]), int(datetext[4:6]))
         myLane.machine_name = machine_name
         myLane.seqrun = run
-        if specs['SampleSheet']['Format'] == 'HiSeq':
-            laneIndices = [x for x in range(len(specs['SampleSheet']['Lane'])) if specs['SampleSheet']['Lane'][x] == str(i)]
-            submissions = list(set([specs['SampleSheet']['Description'][x] for x in laneIndices]))
-            myLane.sub_name = submissions[0] #assume one submission per lane
-        elif specs['SampleSheet']['Format'] == 'NextSeq':
-            myLane.sub_name = specs['SampleSheet']['Description']
+
+        if re.search('nextseq', machine_name, re.IGNORECASE):
+            myLane.sub_name = SampleSheet.subIDs[0]  #assume one submission per NextSeq run
+        elif re.search('hiseq', machine_name, re.IGNORECASE):
+            myLane.sub_name = SampleSheet.lanes[str(laneInt)]['subIDs'][0]  #assume one submission per HiSeq lane
+        else:
+            raise Exception('Unrecognized machine_name: %s' % machine_name)
+
         if options.verbose: printLaneFields(myLane)
         myLane.save()
 
@@ -155,7 +157,6 @@ def printLaneFields(myLane):
     for field in ['num_clusters', 'num_clusters_pf', 'percent_pf_clusters', 'cluster_density', 'cluster_density_pf', 
                   'perc_q_ge_30', 'num_tiles', 'date', 'machine_name', 'sub_name']:
         print '      %s: %s' % (field, getattr(myLane, field))
-
 
 def printRunFields(myRun):
     print 'Run: %s' % myRun.run_name

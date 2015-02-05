@@ -26,6 +26,7 @@ NUM_MISMATCHES = 0
 NUM_THREADS = 8   
 IGNORE_MISSING_BCL = True
 IGNORE_MISSING_CONTROL = True
+SUPPRESS_TRIMMING = False
 WITH_FAILED_READS = False
 TILE_REGEX = None
 DB_STORE = True 
@@ -33,8 +34,7 @@ DB_STORE = True
 ##
 # NextSeq bcl2fastq settings:
 ##
-NEXTSEQ = {"suppressTrimming"      : False,
-           "maskShortAdapterReads" : None,
+NEXTSEQ = {"maskShortAdapterReads" : None,
            "minTrimmedReadLength"  : 0 }  #set to zero because of bcl2fastq bug. See seqprep README for details
 
 ##

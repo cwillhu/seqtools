@@ -26,8 +26,8 @@ def parseOptions(argv):
                       default=settings.NUM_MISMATCHES, action="store", type = "int", dest="numMismatches")
     parser.add_option("-y","--customBasesMask",help="Custom bases mask. By default, mask is generated automatically from runinfo and samplesheet files.",
                       default=None, action="store", type = "string", dest="customBasesMask")
-    parser.add_option("-w","--suppressAdapterTrimming",help="Suppress adapter trimming by removing adapters from samplesheet. NextSeq only. Default: %default",
-                      default=settings.NEXTSEQ["suppressTrimming"], action="store_true", dest="suppressAdapterTrimming")
+    parser.add_option("-w","--suppressAdapterTrimming",help="Suppress adapter trimming by removing adapters from samplesheet. Default: %default",
+                      default=settings.SUPPRESS_TRIMMING, action="store_true", dest="suppressAdapterTrimming")
     parser.add_option("-b","--ignoreMissingBcl",help="Ignore missing BCL files. Default: %default",
                       default=settings.IGNORE_MISSING_BCL, action="store_true", dest="ignoreMissingBcl")
     parser.add_option("-c","--ignoreMissingControl",help="Ignore missing control files. Default: %default",
