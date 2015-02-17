@@ -1,5 +1,6 @@
 #!/usr/bin/env python 
-from seqprep import settings, opts
+from seqprep import settings
+from seqprep import options as opts
 from seqhub import hUtil
 import sys, re
 import os.path as path

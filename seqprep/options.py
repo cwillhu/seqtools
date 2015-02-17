@@ -5,7 +5,8 @@ import subprocess, sys, os, select, re
 import os.path as path
 
 def parseOptions(argv):
-    parser = DictOptionParser(usage="usage: %prog <run_name> [options]")
+    parser = DictOptionParser(usage="usage: %prog [options] <run_name>")
+
     #General options:
     parser.add_option("-p","--primary",help="Directory containing run directory <run_name>. Default: %default",
                       default=hSettings.PRIMARY_PARENT, action="store", type = "string", dest="primaryParent")
@@ -52,9 +53,11 @@ def parseOptions(argv):
                       default=settings.USERS_STRING,action="store", type = "string", dest="usersString")
     (options, args) = parser.parse_args(argv)
 
-    runName = argv[0]
-    runNameMatch = re.match('[0-9]{6}_[0-9A-Za-z]+_', runName) #matches from beg.
-    if not runNameMatch:
-        parser.error("Expected run name as first argument, got '" + runName + "'. Use -h to see usage.")
-    options, ignored = parser.parse_args(argv[1:])
+    if not args:
+        raise Exception('A run name must be provided. Use -h option to see usage details.')
+
+    runName = args[0]
+    if not re.match('[0-9]{6}_[0-9A-Za-z]+_', runName): #matches from beg.
+        raise Exception("Expected run name as argument, got '" + runName + "'. Use -h option to see usage details.")
+
     return options, runName

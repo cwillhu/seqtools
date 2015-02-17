@@ -1,9 +1,9 @@
-#!/usr/bin/env python 
-from seqprep import nextSeqClass, hiSeqClass, settings, opts
+from seqprep import nextSeqClass, hiSeqClass, settings
+from seqprep import options as opts
 from seqhub import hSettings
 import sys, re
 
-def process(argv): #process raw sequencing data
+def processRun(argv): #process raw sequencing data
     options, runName = opts.parseOptions(argv)
     nameMatch = re.match('^[0-9]{6}_([0-9A-Za-z]+)_', runName)
     machine_id = nameMatch.group(1)
