@@ -143,7 +143,7 @@ class IlluminaNextGen(object):
             if 'Read3' in r.keys():
                 if r['Read3']['is_index'] == 'Y': #then Read3 is an index
                     if index2Length > 0:
-                        basesMask += ',I' + str( analDict['index2Length'] ) + 'N' * (int(r['Read3']['num_cycles']) - analDict['index2Length'])
+                        basesMask += ',I' + str(index2Length) + 'N' * (int(r['Read3']['num_cycles']) - index2Length)
                     else:
                         basesMask += ',' + 'N' * int(r['Read3']['num_cycles'])
                 else: #then Read3 is not an index

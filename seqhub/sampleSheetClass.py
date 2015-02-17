@@ -11,9 +11,6 @@ class SampleSheet(object):
         self.suppressAdapterTrimming = suppressAdapterTrimming
         self.selectedLanes = selectedLanes
 
-        self.analyses = list()
-        self.lanes = list()
-
         self.nonIndexRead1_numCycles = None  # Non-index read lengths are not provided in samplesheet format A.
         self.nonIndexRead2_numCycles = None
 
@@ -65,7 +62,6 @@ class SampleSheet(object):
         self.format = 'B'
         inSampleData = False
         section = ''
-        subIDs = set()
         headerSubIDs = set()
         for i in range(len(self.ss)):
             line = self.ss[i]
@@ -225,7 +221,7 @@ class SampleSheet(object):
                 analyses[analName]['samples'].append(vDict)           #assign sample to this analysis
                 analyses[analName]['lineIndices'].append(i)           #record lines in samplesheet that correspond to this analysis
 
-            # Build new samplesheet line
+            # Build validated samplesheet line
             if vDict:
                 self.ss[i] = ','.join( [vDict[x] for x in colNames] )
             else:
@@ -326,12 +322,15 @@ class SampleSheet(object):
                     vDict['index'] = index1  #update index in vDict
                     if index2:
                         vDict['index'] += '-' + index2
-            
+
+            ##
             # Lane Dict
+            ##
+
             if lane not in samplesheetLanes:
                 #start new lane dict
                 samplesheetLanes[lane] = dict()
-                samplesheetLanes[lane]['subIDs'] = set()
+                samplesheetLanes[lane]['subIDs'] = list()
                 samplesheetLanes[lane]['samples'] = list()
                 samplesheetLanes[lane]['index1Length'] = None
                 samplesheetLanes[lane]['index2Length'] = None
@@ -346,12 +345,19 @@ class SampleSheet(object):
 
             samplesheetLanes[lane]['samples'].append(vDict)  #assign sample to this lane
 
+            if subID and subID not in samplesheetLanes[lane]['subIDs']:
+                samplesheetLanes[lane]['subIDs'].append(subID)  #add subID to this lane
+
+            ##
             # Analysis Dict
+            ##
+
             analName = 'Lane' + lane + '.indexlength_' + indexType  
             if analName not in analyses:
                 #build new analysis dict
                 analyses[analName] = dict()
                 analyses[analName]['samples'] = list()
+                analyses[analName]['subIDs'] = list()
                 analyses[analName]['index1Length'] = len(index1)
                 analyses[analName]['index2Length'] = len(index2)
                 analyses[analName]['lineIndices'] = list()
@@ -359,7 +365,13 @@ class SampleSheet(object):
             analyses[analName]['samples'].append(vDict)           #assign sample to this analysis
             analyses[analName]['lineIndices'].append(i)           #record lines in samplesheet that correspond to this analysis
 
-            # Build new samplesheet line
+            if subID and subID not in analyses[analName]['subIDs']:
+                analyses[analName]['subIDs'].append(subID)  #add subID to this analysis
+
+            ##
+            # Build validated samplesheet line
+            ##
+
             self.ss[i] = ','.join( [vDict[x] for x in colNames] )
 
             # Done parsing samplesheet.

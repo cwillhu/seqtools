@@ -40,7 +40,7 @@ class NextSeq(IlluminaNextGen):
             if analysis['index1Length'] > index1Length:
                 index1Length = analysis['index1Length']
             if analysis['index2Length'] > index2Length:
-                index2Length = analysis['index12ength']
+                index2Length = analysis['index2Length']
 
         #build bcl2fastq command        
         command = 'source new-modules.sh; module load bcl2fastq2; echo "Using bcl2fastq: "; which bcl2fastq; '
