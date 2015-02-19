@@ -22,7 +22,7 @@ class SampleSheet(object):
         ss = [ re.sub('\s', '', x) for x in ss if x.rstrip()]  #delete blank lines and other whitespace
         ss = [ re.sub(r'[)(]', '_', x) for x in ss ]                  #replace illegal characters with underscores
         self.ss = [ re.sub(r'(?<=[AGCTNagtcn]{2})-(?=[AGCTNagtcn]{2})', '_', x) for x in ss]  #replace dashes unless they may be in a dual index
-        
+
         if re.match('FCID',self.ss[0]): #matches from beg.
             self.parseFormatA()
         else:
@@ -66,6 +66,10 @@ class SampleSheet(object):
         for i in range(len(self.ss)):
             line = self.ss[i]
             vals = line.split(',')
+
+            if not any(vals):
+                continue    #skip lines containing only commas
+
             vDict = None
             if vals[0] == '[Header]':
                 section = 'Header'
@@ -261,7 +265,13 @@ class SampleSheet(object):
 
         for i in range(1,len(self.ss)): 
             line = self.ss[i].rstrip()
-            vDict = OrderedDict(zip(colNames, line.split(',')))  #convert list of values to dict where keys are column names                                                                
+            lineVals = line.split(',')
+
+            if not any(lineVals):
+                continue    #skip lines containing only commas
+
+            vDict = OrderedDict(zip(colNames, lineVals))  #dict keys are column names
+
             lane = vDict['lane']
             if self.selectedLanes and lane not in self.selectedLanes:
                 continue
@@ -271,7 +281,7 @@ class SampleSheet(object):
             indexType = vDict['recipe']            #examples: '6' for a 6-base index; '8_8' for two indices were each 8 is bases.
 
             vDict['sampleproject'] = 'Fastq_Files'               #reset project field, as this will create uniform output directory stucture for all runs
-            vDict['sampleid'] = re.sub(r'[- .)(@]','_',sampName) #replace illegal characters in sample name with underscores                                                       
+            vDict['sampleid'] = re.sub(r'[- .)(@]','_',sampName) #replace illegal characters in sample name with underscores
 
             # Error checking and validation
             self.validate_indexChars(index, i)
