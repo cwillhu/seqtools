@@ -58,9 +58,12 @@ def runCmd(cmd):
     p.wait()
 
 def recursiveChmod(item, filePermissions, dirPermissions):
+
     if path.isfile(item):
         raise Exception('First input arg "%s" is a file. Expected directory.' % item)
+
     os.chmod(item, dirPermissions)
+
     for root,dirs,files in os.walk(item):
         for d in dirs:
             os.chmod(path.join(root,d), dirPermissions)
@@ -79,9 +82,12 @@ def email(addresses, subject, message):
 
 def append(text, filename, echo = False):
     parentDir = path.dirname(filename)
+
     if not path.isdir(parentDir):
         mkdir_p(parentDir)
+
     if echo: print text
+
     fh = open(filename, 'a')
     fh.write(text + "\n") #append text to file                                                                                                              
     fh.close()
@@ -116,8 +122,10 @@ def flatten(x):
 
 def setPermissions(item):
     filePermissions = stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IWGRP|stat.S_IROTH
+
     if path.isfile(item):
         os.chmod(item, filePermissions)
+
     elif path.isdir(item):
         dirPermissions = stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IWGRP|stat.S_IXGRP|stat.S_IRUSR|stat.S_IROTH|stat.S_IXOTH
         recursiveChmod(item, filePermissions, dirPermissions)
@@ -147,7 +155,7 @@ def parseRunInfo(rifile):
     return rdict, datetext
 
 
-def gzNotEmpty(self, f):
+def gzNotEmpty(f):
     if not path.isfile(f):
         raise Exception('File %s not found.' % f)
     if not re.search('.gz$', f, flags=re.IGNORECASE):
@@ -160,18 +168,27 @@ def gzNotEmpty(self, f):
     else:
         return False
 
-    def md5sum(self,myDir):
-        # Calculate md5sum checksums on any .fastq.gz files in myDir. Saves checksums to md5sum.txt in myDir
-        # Writing md5sum.txt to the same directory as the input files avoids ambiguity that could arise if samples 
-        # with the same name are run in different lanes. 
+    def _hashfile(self, afile, hasher, blocksize=65536): 
+        buf = afile.read(blocksize)
 
-        outFile = file(path.join(myDir,'md5sum.txt'), 'w')
-        files = [f for f in glob.glob(path.join(myDir, '*.fastq.gz')) if path.isfile(f)]
-        checksums = [(path.basename(fname), self._hashfile(open(fname, 'rb'), hashlib.md5())) for fname in files]
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = afile.read(blocksize)
 
-        for pair in checksums:
-            outFile.write('%s\t%s\n' % pair)
+        return hasher.hexdigest()
 
-        outFile.close()
+def md5sum(myDir):
+    # Calculate md5sum checksums on any .fastq.gz files in myDir. Saves checksums to md5sum.txt in myDir
+    # Writing md5sum.txt to the same directory as the input files avoids ambiguity that could arise if samples 
+    # with the same name are run in different lanes. 
+
+    outFile = file(path.join(myDir,'md5sum.txt'), 'w')
+    files = [f for f in glob.glob(path.join(myDir, '*.fastq.gz')) if path.isfile(f)]
+    checksums = [(path.basename(fname), hashfile(open(fname, 'rb'), hashlib.md5())) for fname in files]
+
+    for pair in checksums:
+        outFile.write('%s\t%s\n' % pair)
+
+    outFile.close()
 
 

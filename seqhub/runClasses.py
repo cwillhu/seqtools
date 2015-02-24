@@ -338,16 +338,6 @@ class IlluminaNextGen:
         self.shell(command, self.logFile)
 
 
-    def _hashfile(self, afile, hasher, blocksize=65536): #helper function for calculating checksums
-        buf = afile.read(blocksize)
-
-        while len(buf) > 0:
-            hasher.update(buf)
-            buf = afile.read(blocksize)
-
-        return hasher.hexdigest()
-
-
     def copyToFinal(self): #copy processing results to self.finalDir
         self.log('Copying data to ' + self.finalDir + '...')
         self.safeCopy(self.finishingDir, self.finalDir)
