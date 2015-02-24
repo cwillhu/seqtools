@@ -165,10 +165,13 @@ class HiSeqAnalysis(IlluminaNextGenAnalysis):
 
         if self.Run.ignoreMissingBcl:
             command += ' --ignore-missing-bcl \\\n'
+
         if self.Run.ignoreMissingControl:
             command += ' --ignore-missing-control \\\n'
+
         if self.Run.withFailedReads:
             command += ' --with-failed-reads \\\n'
+
         if self.Run.tileRegex:
             command += ' --tiles ' + self.tileRegex + ' \\\n'
 
@@ -255,6 +258,7 @@ class HiSeqAnalysis(IlluminaNextGenAnalysis):
         if not path.isfile(statsFile):
             summary.append('    No Demultiplex_Stats.htm found in finalDir! Checking finishingDir...\n\n')
             statsFile = path.join(self.finishingDir, 'Basecall_Stats', 'Demultiplex_Stats.htm')
+
             if not path.isfile(statsFile):
                 summary.append('    No Demultiplex_Stats.htm found in finishingDir.\n\n')
 
@@ -300,19 +304,25 @@ class NextSeqAnalysis(IlluminaNextGenAnalysis):
 
 
     def bcl2fastq(self):
+
         command = 'source new-modules.sh; module load bcl2fastq2; echo "Using bcl2fastq: "; which bcl2fastq; '
+
         if self.Run.customBasesMask:
             basesMask = self.Run.customBasesMask
         else:
             basesMask = self.Run.makeBasesMask(self.index1Length, self.index2Length)
+
         command += 'bcl2fastq --runfolder-dir '      + self.Run.primaryDir \
                           + ' --barcode-mismatches ' + str(self.Run.numMismatches) \
                           + ' --output-dir '         + self.processingDir \
                           + ' --use-bases-mask '     + basesMask
+
         if self.Run.maskShortAdapterReads:
             command += ' --mask-short-adapter-reads ' + str(self.Run.maskShortAdapterReads)
+
         if self.Run.minTrimmedReadLength is not None:
             command += ' --minimum-trimmed-read-length ' + str(self.Run.minTrimmedReadLength)  #see README for notes on this parameter                                      
+
         command += '; '
 
         self.Run.shell(command, self.Run.logFile)
