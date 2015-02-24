@@ -6,7 +6,9 @@ from seqstats import settings, stats, util
 from seqstats.models import SeqRun, Lane
 from django.core.serializers.json import DjangoJSONEncoder
 from optparse import OptionParser
-from seqhub import hSettings, hUtil, sampleSheetClass
+from seqhub import hSettings, hUtil
+from seqhub.sampleSheetClasses import BaseSampleSheet
+from seqhub.runClasses import IlluminaNextGen
 import shutil
 import time, json
 import sys, re, os
@@ -90,9 +92,11 @@ def add(argv):  #add a new run to DB
     quality_summary = quality.read_qscore_results
     layout = tile.flowcell_layout
 
-    #make specs from RunInfo.xml and SampleSheet.csv  (specs dict will be saved as json in DB)
+    #make specs dict from RunInfo.xml and SampleSheet.csv  (specs dict will be saved as json in DB)
     specs = dict()
-    SampleSheet = sampleSheetClass.SampleSheet(path.join(runPath, 'SampleSheet.csv'))
+    seqPrepRun = IlluminaNextGen.getInstance(runName)
+    SampleSheet = BaseSampleSheet.getInstance(seqPrepRun)
+    SampleSheet.parse()
     specs['SampleSheet'] = SampleSheet.contentString
     reads, datetext = hUtil.parseRunInfo(path.join(runPath, 'RunInfo.xml'))
     specs['Reads'] = reads

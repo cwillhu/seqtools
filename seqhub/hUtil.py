@@ -105,6 +105,15 @@ def touch(fname):
 def unique(a):
      return list(set(a))
 
+def flatten(x):
+    result = []
+    for elem in x:
+        if hasattr(elem, "__iter__") and not isinstance(elem, basestring):
+            result.extend(flatten(elem))
+        else:
+            result.append(elem)
+    return result
+
 def setPermissions(item):
     filePermissions = stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IWGRP|stat.S_IROTH
     if path.isfile(item):
@@ -138,5 +147,31 @@ def parseRunInfo(rifile):
     return rdict, datetext
 
 
+def gzNotEmpty(self, f):
+    if not path.isfile(f):
+        raise Exception('File %s not found.' % f)
+    if not re.search('.gz$', f, flags=re.IGNORECASE):
+        raise Exception('Attempt to decompress file not ending in .gz: %s' % f)
+    fh = gzip.open(f, 'rb')
+    data = fh.read(100)
+    fh.close()
+    if data:
+        return True #gz file contains data
+    else:
+        return False
+
+    def md5sum(self,myDir):
+        # Calculate md5sum checksums on any .fastq.gz files in myDir. Saves checksums to md5sum.txt in myDir
+        # Writing md5sum.txt to the same directory as the input files avoids ambiguity that could arise if samples 
+        # with the same name are run in different lanes. 
+
+        outFile = file(path.join(myDir,'md5sum.txt'), 'w')
+        files = [f for f in glob.glob(path.join(myDir, '*.fastq.gz')) if path.isfile(f)]
+        checksums = [(path.basename(fname), self._hashfile(open(fname, 'rb'), hashlib.md5())) for fname in files]
+
+        for pair in checksums:
+            outFile.write('%s\t%s\n' % pair)
+
+        outFile.close()
 
 
