@@ -1,16 +1,11 @@
 from seqhub import hUtil, hSettings
 from seqhub.sampleSheetClasses import BaseSampleSheet
 from seqprep import settings
-import os, re, shutil, glob, fnmatch, errno, stat, gzip, traceback
+import os, re, traceback
 from lxml import etree
 from os import path
-import hashlib
 from abc import ABCMeta, abstractmethod
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ordereddict import OrderedDict # for python 2.6 and earlier, use backport                                                                                                        
 
 class IlluminaNextGen:
 
@@ -174,10 +169,14 @@ class IlluminaNextGen:
 
             self.summarizeDemuxResults()
             self.DBupdate()
+            self.warn()
 
         except:
             self.notify('Seqprep Exception', 'Error in ' + self.runOutName + ':\n' + traceback.format_exc())
             return
+
+        self.log('\nPost-processing complete.')
+
 
     def parseSamplesheet(self, write_validated=False, write_analysis_samplesheets=False):
 
@@ -194,43 +193,12 @@ class IlluminaNextGen:
 
         if write_analysis_samplesheets:
             for a in self.analyses:
-                a.writeSamplesheet(self.processingDir)
+                a.writeSamplesheet()
 
             
-    def makeBasesMask(self, index1Length, index2Length):  
-
-        index1Length = int(index1Length)
-        index2Length = int(index2Length)
-
-        r, ignored = hUtil.parseRunInfo(self.runinfoFile) #example: {'Read1': {'num_cycles': 76, 'is_index': 'N'}, 'Read2': {'num_cycles': 7, 'is_index': 'Y'}}  
-
-        basesMask = 'Y' + str( int(r['Read1']['num_cycles']) - 1 ) + 'N' 
-        if 'Read2' in r.keys():
-
-            if r['Read2']['is_index'] == 'Y': #then Read2 is an index
-                if index1Length > 0:
-                    basesMask += ',I' + str(index1Length) + 'N' * (int(r['Read2']['num_cycles']) - index1Length)
-                else:
-                    basesMask += ',' + 'N' * int(r['Read2']['num_cycles'])
-            else: #then Read2 is not an index
-                basesMask += ',Y' + str( int(r['Read2']['num_cycles']) - 1 ) + 'N'
-
-            if 'Read3' in r.keys():
-                if r['Read3']['is_index'] == 'Y': #then Read3 is an index
-                    if index2Length > 0:
-                        basesMask += ',I' + str(index2Length) + 'N' * (int(r['Read3']['num_cycles']) - index2Length)
-                    else:
-                        basesMask += ',' + 'N' * int(r['Read3']['num_cycles'])
-                else: #then Read3 is not an index
-                    basesMask += ',Y' + str( int(r['Read3']['num_cycles']) - 1 ) + 'N'
-
-                if 'Read4' in r.keys(): #Read4 is never an index
-                    basesMask += ',Y' + str( int(r['Read4']['num_cycles']) - 1 ) + 'N'
-
-        return basesMask
-
-
     def bcl2fastq(self):
+        if not self.analyses:  
+            self.parseSamplesheet()
 
         for a in self.analyses:
             a.bcl2fastq()
@@ -259,21 +227,32 @@ class IlluminaNextGen:
 
 
     def countUndetIndices(self):
+        if not self.analyses:  
+            self.parseSamplesheet()
+
         for a in self.analyses:
             a.countUndetIndices()
 
 
     def fastQC(self):
+        if not self.analyses:  
+            self.parseSamplesheet()
+
         for a in self.analyses:
             a.fastQC()
 
                 
     def calcCheckSums(self):
+        if not self.analyses:  
+            self.parseSamplesheet()
+
         for a in self.analyses:
-            a.md5sum()
+            a.calcCheckSums()
 
 
     def validateFinalDir(self):
+        if not self.analyses:  
+            self.parseSamplesheet()
 
         self.log('Checking for required files in finalDir ' + self.finalDir + ' ...')
 
@@ -287,44 +266,79 @@ class IlluminaNextGen:
         if len(hUtil.intersect(os.listdir(self.finalDir), runParameters_filenames)) < 1:
             raise Exception('RunParameters file missing from finalDir ' + self.finalDir )
 
+        warnings = list()
         for a in self.analyses:
-            a.validateFinalDir()
+            warnings += a.validateFinalDir()
+
+        if warnings:
+            self.notify('SeqPrep Warning', '\n'.join(warnings))
 
 
-    def summarizeDemuxResults(self, writeFiles = True):
-        if writeFiles: 
-            self.log('Scanning log and summarizing demux statistics...')
+    def summarizeDemuxResults(self):  #base run
+        if not self.analyses:  
+            self.parseSamplesheet()
 
-        with open(self.logFile,'r') as fh:
+        self.log('Scanning bcl2fastq log and summarizing demux statistics...')                                                                        
+
+        with open(self.logFile,'r') as fh:  #read in log file
             log = fh.readlines()
 
-        summary = list()
+        errors = list()
         for i, line in enumerate(log):
 
-            if re.search(r'error|exception|inconsistent| failed|failed |negative number of base', line, flags=re.IGNORECASE):
+            if re.search(r'error|exception|inconsistent| failed|failed |negative number of base', line, flags=re.IGNORECASE) \
+                    and re.search(r'^((?!0 errors).)*$', line, flags=re.IGNORECASE):
 
-                summary.append('\n_____Error found in %s at line %s:_____\n' % (self.logFile, i))
+                errors.append('\n_____Error found in %s at line %s:_____\n' % (self.logFile, i))
 
-                if i-2 >= 0: summary.append(log[i-2])
-                if i-1 >= 0: summary.append(log[i-1])
+                if i-2 >= 0: errors.append(log[i-2])
+                if i-1 >= 0: errors.append(log[i-1])
 
-                summary.append(log[i])
+                errors.append(log[i])
 
-                if i+1 < len(log): summary.append(log[i+1])
-                if i+2 < len(log): summary.append(log[i+2])
+                if i+1 < len(log): errors.append(log[i+1])
+                if i+2 < len(log): errors.append(log[i+2])
 
-                summary[-1] = summary[-1] + '\n\n'
+                errors[-1] = errors[-1] + '\n'
 
+
+        summary = list()
+
+        ## Begin summary with runOutName
+
+        summary.append('\n' + self.runOutName)
+        summary.append('--------------------------------------------------\n')
+        summary.append('Anaylses: %s\n' % len(self.analyses))
+
+        ## Append any bcl2fastq errors to summary
+        if errors:
+            summary += errors
+
+        ## Append analysis summaries
         for a in self.analyses:
+            summary.append('\nAnalysis  ' + a.name + ':')
+            summary.append('--------------------------------------------------\n')
             summary += a.summarizeDemuxResults()
 
-        summary = ''.join(summary)
-
+        ## Append user letter
+        summary.append('\n\nLetter:')
+        summary.append('--------------------------------------------------\n')
         letter = self.makeLetter()
+        summary += letter
+        self.letter = '\n'.join(letter)
 
-        if self.verbose: print summary + '\n\n' + letter
+        ## Append SampleSheet
+        summary.append('\nSampleSheet:')
+        summary.append('--------------------------------------------------\n')
+        summary += self.SampleSheet.ss
+        summary.append('\n')
 
-        self.notify('Demultiplex Summary', self.runOutName + '\n\n' + summary + '\n\n' + letter, includeWatchers=True)
+        self.summary = '\n'.join(summary)
+
+        if self.verbose: 
+            print self.summary
+
+        self.notify('%s Demultiplex Summary' % self.runType, self.summary, includeWatchers=True)
 
 
     def DBupdate(self):
@@ -336,6 +350,16 @@ class IlluminaNextGen:
                                          + '-u ' + ','.join(self.SampleSheet.subIDs) + ' \\\n' \
                                          + '-s 1 \n'  #1 to store values in database
         self.shell(command, self.logFile)
+
+
+    def warn(self):
+        warnings = list()
+
+        for a in self.analyses:
+            warnings += a.warnings
+
+        if warnings:
+            self.notify('SeqPrep Warning', self.runOutName + '\n\n' + '\n'.join(warnings))
 
 
     def copyToFinal(self): #copy processing results to self.finalDir
@@ -414,17 +438,6 @@ class IlluminaNextGen:
         self.log('Notification:\n' + subject + '\n' + body + '\n\n')
 
 
-    def formatTable(self, rows):
-        lines = list()
-        cols = zip(*rows)
-        colWidths = [ max(len(elem) for elem in col) for col in cols ]
-        rowFormat = '    ' + '  |  '.join(['%%%ds' % width for width in colWidths ]) + '\n'
-        for row in rows:
-            lines.append(rowFormat % tuple(row))
-        lines.append('\n')
-        return lines
-
-
 
 class NextSeq(IlluminaNextGen):
 
@@ -451,16 +464,25 @@ class NextSeq(IlluminaNextGen):
         self.log(optionsStr)  #log NextSeq options
 
 
-    def makeLetter(self):
-        return ''.join(('\n\nHi all,\n\n',
-                        'The fastq files with the read sequences of run ' + self.runName + ' are available at:\n\n',
-                        'https://software.rc.fas.harvard.edu/ngsdata/' + self.runOutName + '\n\n',
-                        'or under /n/ngsdata/' + self.runOutName + ' on the cluster.\n\n',
-                        'Summary statistics can be found at:\n\n',
-                        'https://software.rc.fas.harvard.edu/ngsdata/'+self.runOutName+'/Reports/html/'+self.flowcell+'/all/all/all/laneBarcode.html\n\n',
-                        'Reads with indices not in SampleSheet.csv are in the fastq file labeled\n',
-                        '\'Undetermined_S0.\' We encourage users to download a local copy of their\n',
-                        'data, as run data will eventually be removed from the ngsdata server.\n\nBest,\nChris\n\n'))
+    def makeLetter(self):  #nextseq
+
+        if not self.analyses:  
+            self.parseSamplesheet()
+
+        analysisStatsPages = ['https://software.rc.fas.harvard.edu/ngsdata/'+self.runOutName+'/'+x.name+'/Reports/html/'+self.flowcell+'/all/all/all/laneBarcode.html' \
+                              for x in self.analyses]
+
+        return ['Hi all,\n',
+                'The fastq files with the read sequences of run ' + self.runName + ' are available at:\n',
+                'https://software.rc.fas.harvard.edu/ngsdata/' + self.runOutName + '\n',
+                'or under /n/ngsdata/' + self.runOutName + ' on the cluster.\n',
+                'Summary statistics can be found at:\n',
+                '\n'.join(analysisStatsPages),
+                '\nReads with indices not in SampleSheet.csv are in the fastq file labeled',
+                '\'Undetermined_S0.\' We encourage users to download a local copy of their',
+                'data, as run data will eventually be removed from the ngsdata server.\n',
+                'For more information, please see our FAQ page:\n',
+                'http://informatics.fas.harvard.edu/faq\n\nBest,\nChris\n']
 
 
 
@@ -472,8 +494,14 @@ class HiSeq(IlluminaNextGen):
         self.runparametersFile = path.join(self.primaryDir, 'runParameters.xml')
         self.runType = 'HiSeq'
 
-        if kwargs and 'lanesStr' in kwargs.keys() and kwargs['lanesStr']: 
-            lanesStr = kwargs['lanesStr']
+        #set selected lanes
+        if kwargs and \
+                ('lanesStr' in kwargs.keys() and kwargs['lanesStr']) or \
+                ('laneStr' in kwargs.keys() and kwargs['laneStr']) :
+            if kwargs['lanesStr']: 
+                lanesStr = kwargs['lanesStr']
+            elif kwargs['laneStr']: 
+                lanesStr = kwargs['lanesStr']
             self.selectedLanes = lanesStr.split(',')
         else:
             lanesStr = 'All'
@@ -485,13 +513,15 @@ class HiSeq(IlluminaNextGen):
         self.log(optionsStr)  #log HiSeq options
 
 
-    def makeLetter(self):
-        return ''.join(('\n\nHi all,\n\n',
-                        'The fastq files with the read sequences of run ' + self.runName + ' are available at:\n\n',
-                        'https://software.rc.fas.harvard.edu/ngsdata/' + self.runOutName + '\n\n',
-                        'or under /n/ngsdata/' + self.runOutName + ' on the cluster.\n\n',
-                        'Summary statistics can be found in Basecall_Stats/Demultiplex_Stats.htm. Reads\n',
-                        'with indices not in the SampleSheet are in the fastq file(s) labeled \'Undetermined.\'\n\n',
-                        'We encourage users to download a local copy of their data, as run data will\n',
-                        'eventually be removed from the ngsdata server.\n\nBest,\nChris\n\n'))
+    def makeLetter(self):  #hiseq
+        return ['Hi all,\n',
+                'The fastq files with the read sequences of run ' + self.runName + ' are available at:\n',
+                'https://software.rc.fas.harvard.edu/ngsdata/' + self.runOutName + '\n',
+                'or under /n/ngsdata/' + self.runOutName + ' on the cluster.\n',
+                'Summary statistics can be found in Basecall_Stats/Demultiplex_Stats.htm. Reads',
+                'with indices not in the SampleSheet are in the fastq file(s) labeled \'Undetermined.\'\n',
+                'We encourage users to download a local copy of their data, as run data will',
+                'eventually be removed from the ngsdata server.\n',
+                'For more information, please see our FAQ page:\n',
+                'http://informatics.fas.harvard.edu/faq\n\nBest,\nChris\n']
 

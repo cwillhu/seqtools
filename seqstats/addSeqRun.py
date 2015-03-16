@@ -144,9 +144,9 @@ def add(argv):  #add a new run to DB
         myLane.seqrun = run
 
         if re.search('nextseq', machine_name, re.IGNORECASE):
-            myLane.sub_name = SampleSheet.subIDs[0]  #assume one submission per NextSeq run
+            myLane.sub_name = SampleSheet.subIDs[0]  #assume one submission per NextSeq run. ****Issue: user (samplesheet) lane vs. binary file lane (e.g., nextseq)
         elif re.search('hiseq', machine_name, re.IGNORECASE):
-            myLane.sub_name = SampleSheet.lanes[str(laneInt)]['subIDs'][0]  #assume one submission per HiSeq lane
+            myLane.sub_name = SampleSheet.lanes[laneInt-1].subIDs[0]  #assume one submission per HiSeq lane  ****Make lane indexing more clear
         else:
             raise Exception('Unrecognized machine_name: %s' % machine_name)
 

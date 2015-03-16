@@ -9,6 +9,6 @@ def processRun(argv): #process raw sequencing data
 
     options, runName = opts.parseOptions(argv)
 
-    r = IlluminaNextGen.getInstance(runName, options)
+    r = IlluminaNextGen.getInstance(runName, **options)
     r.processRun()
 

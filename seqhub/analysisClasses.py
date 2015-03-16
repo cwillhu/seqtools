@@ -1,9 +1,18 @@
 import os.path as path
 from seqprep import countUndetInd
 from seqhub import hUtil
+from seqhub.hUtil import flatten, mkdir_p
 import os, re, glob, traceback
 from lxml import etree, html
 from abc import ABCMeta, abstractmethod
+
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict # for python 2.6 and earlier, use backport 
+
+import locale  #for printing of commas in numbers using format()
+ignored = locale.setlocale(locale.LC_ALL, '') # empty string for platform's default setting
 
 class IlluminaNextGenAnalysis:
 
@@ -42,7 +51,6 @@ class IlluminaNextGenAnalysis:
 
         if self.Run.processingDir:
             self.processingDir = path.join(self.Run.processingDir, self.name)
-            self.ssFile = path.join(self.Run.processingDir, 'SampleSheet.' + self.name + '.csv')
 
         if self.Run.finishingDir:
             self.finishingDir = path.join(self.Run.finishingDir, self.name)
@@ -50,10 +58,11 @@ class IlluminaNextGenAnalysis:
         if self.Run.finalDir:
             self.finalDir = path.join(self.Run.finalDir, self.name)
 
+        self.warnings = list()
 
 
     @abstractmethod
-    def writeSamplesheet(self, outDir):
+    def writeSamplesheet(self, outDir = None):
         pass
 
 
@@ -75,6 +84,68 @@ class IlluminaNextGenAnalysis:
     @abstractmethod
     def summarizeDemuxResults(self):
         pass
+
+
+    def makeBasesMask(self, index1Length, index2Length):  
+        index1Length = int(index1Length)
+        index2Length = int(index2Length)
+        
+        runinfo_index_numcycles = list()
+
+        r, ignored = hUtil.parseRunInfo(self.Run.runinfoFile) #example: {'Read1': {'num_cycles': 76, 'is_index': 'N'}, 'Read2': {'num_cycles': 7, 'is_index': 'Y'}}  
+
+        basesMask = 'Y' + str( int(r['Read1']['num_cycles']) - 1 ) + 'N'  #Read1 is never an index
+
+        if 'Read2' in r.keys():
+
+            if r['Read2']['is_index'] == 'Y': #then Read2 is an index
+
+                read2_numcycles = int(r['Read2']['num_cycles'])
+
+                if index1Length > 0:
+                    basesMask += ',I' + str(index1Length) + 'N' * (read2_numcycles - index1Length)
+                else:
+                    basesMask += ',' + 'N' * read2_numcycles
+
+                runinfo_index_numcycles.append(read2_numcycles)
+
+            else: #then Read2 is not an index
+                basesMask += ',Y' + str( int(r['Read2']['num_cycles']) - 1 ) + 'N'
+
+            if 'Read3' in r.keys():
+
+                if r['Read3']['is_index'] == 'Y': #then Read3 is an index
+                    read3_numcycles = int(r['Read3']['num_cycles'])
+
+                    if index2Length > 0:
+                        basesMask += ',I' + str(index2Length) + 'N' * (read3_numcycles - index2Length)
+
+                    else:
+                        basesMask += ',' + 'N' * read3_numcycles
+
+                    runinfo_index_numcycles.append(read3_numcycles)
+
+                else: #then Read3 is not an index
+                    basesMask += ',Y' + str( int(r['Read3']['num_cycles']) - 1 ) + 'N'
+
+                if 'Read4' in r.keys(): #Read4 is never an index
+                    basesMask += ',Y' + str( int(r['Read4']['num_cycles']) - 1 ) + 'N'
+
+        # Check if index lengths in samplesheet and runinfo file agree
+
+        if (index1Length > 0 or len(runinfo_index_numcycles) > 0) \
+                and index1Length not in [ runinfo_index_numcycles[0], runinfo_index_numcycles[0] - 1 ]:
+
+            self.warnings.append('In analysis %s: Unusual combination of samplesheet index length and runinfo num cycles for 1st index. Index length: %s. RunInfo num cycles: %s' 
+                            % (self.name, index1Length, runinfo_index_numcycles[0]))
+
+        if (index2Length > 0 or len(runinfo_index_numcycles) > 1) \
+                and index2Length not in [ runinfo_index_numcycles[1], runinfo_index_numcycles[1] - 1 ]:
+
+            self.warnings.append('In analysis %s: Unusual combination of samplesheet index length and runinfo num cycles for 2nd index. Index length: %s. RunInfo num cycles: %s' 
+                            % (self.name, index2Length, runinfo_index_numcycles[1]))
+
+        return basesMask
 
 
     def calcCheckSums(self):
@@ -116,12 +187,28 @@ class IlluminaNextGenAnalysis:
 
         self.Run.log('Checking for required files in finalDir ' + self.finalDir + ' ...')
 
-        for item in self.finalDir_requiredItems:
-            if not path.isfile(item) and not path.isdir(item):
-                raise Exception('Item missing from finalDir: ' + item)
+        warnings = list()
+
+        for item in flatten([self.finalDir_requiredItems, path.basename(self.ssFile)]):
+            itemPath = path.join(self.finalDir, item)
+            if not path.isfile(itemPath) and not path.isdir(itemPath):
+                warnings.append('Item missing from analysis finalDir: ' + itemPath)
 
         if len(glob.glob(path.join(self.finalDir, 'Fastq', '*.fastq.gz'))) == 0:
-                raise Exception('No fastq.gz files found in finalDir: ' + self.finalDir)
+                warnings.append('No fastq.gz files found in analysis finalDir ' + self.finalDir)
+
+        return warnings
+
+
+    def formatTable(self, rows):
+        lines = list()
+        cols = zip(*rows)
+        colWidths = [ max(len(elem) for elem in col) for col in cols ]
+        rowFormat = '    ' + '  |  '.join(['%%%ds' % width for width in colWidths ])
+        for row in rows:
+            lines.append(rowFormat % tuple(row))
+        lines.append('\n')
+        return lines
 
 
 
@@ -133,10 +220,17 @@ class HiSeqAnalysis(IlluminaNextGenAnalysis):
         self.finalDir_requiredItems = ['Fastq', 'QC', 'Basecall_Stats']
 
 
-    def writeSamplesheet(self, outDir):
-        ssFile = path.join(outDir, 'SampleSheet.' + self.name + '.csv')
+    def writeSamplesheet(self, outDir = None):
 
-        with open(ssFile, 'w') as fh:
+        if not outDir:
+            outDir = self.Run.processingDir  #bcl2fastq for HiSeq 2000 requires that analysis processing dir (self.processingDir) not yet exist. Therefore write to Run.processingDir
+
+        if not path.isdir(outDir):
+            mkdir_p(outDir)
+
+        self.ssFile = path.join(outDir, 'SampleSheet.' + self.name + '.csv')
+
+        with open(self.ssFile, 'w') as fh:
             fh.write(self.Run.SampleSheet.ss[0] + '\n')  #write out header line 
             fh.write('\n'.join( [self.Run.SampleSheet.ss[x] for x in self.ssLineIndices] ))  #write out lines corresponding to this analysis
 
@@ -154,7 +248,7 @@ class HiSeqAnalysis(IlluminaNextGenAnalysis):
         if self.Run.customBasesMask:
             basesMask = self.customBasesMask
         else:
-            basesMask = self.Run.makeBasesMask(self.index1Length, self.index2Length)
+            basesMask = self.makeBasesMask(self.index1Length, self.index2Length)
 
         command += 'configureBclToFastq.pl --input-dir ' + inDir                         + ' \\\n' \
                                        + ' --output-dir ' + outDir                       + ' \\\n' \
@@ -173,9 +267,10 @@ class HiSeqAnalysis(IlluminaNextGenAnalysis):
             command += ' --with-failed-reads \\\n'
 
         if self.Run.tileRegex:
-            command += ' --tiles ' + self.tileRegex + ' \\\n'
+            command += " --tiles '" + self.Run.tileRegex + "' \\\n"
 
-        command += '\n'  #end line continuation                                                                                                                                   
+        command += '\n'  #end line continuation
+
         command += 'cd ' + outDir + '; make -j ' + str(self.Run.numThreads) + '\n'
 
         self.Run.shell(command, self.Run.logFile)
@@ -245,22 +340,22 @@ class HiSeqAnalysis(IlluminaNextGenAnalysis):
                     newItem = path.join(self.finishingDir, 'Basecall_Stats', item)
                     self.Run.safeCopy( itemPath, newItem )
 
-        #copy analysis samplesheet
+        #copy analysis samplesheet to analysis finishingDir
         self.Run.safeCopy( self.ssFile, path.join(self.finishingDir, path.basename(self.ssFile)) )
-
     
-    def summarizeDemuxResults(self):
-        summary = list()
-        summary.append('\n\n  ' + self.name + ':\n')
+    def summarizeDemuxResults(self): #hiseq analysis
 
+        summary = list()
+
+        ## Get stats from html report
         statsFile = path.join(self.finalDir, 'Basecall_Stats', 'Demultiplex_Stats.htm')
 
         if not path.isfile(statsFile):
-            summary.append('    No Demultiplex_Stats.htm found in finalDir! Checking finishingDir...\n\n')
+            summary.append('    No Demultiplex_Stats.htm found in finalDir! Checking finishingDir...\n')
             statsFile = path.join(self.finishingDir, 'Basecall_Stats', 'Demultiplex_Stats.htm')
 
             if not path.isfile(statsFile):
-                summary.append('    No Demultiplex_Stats.htm found in finishingDir.\n\n')
+                summary.append('    No Demultiplex_Stats.htm found in finishingDir.\n')
 
         with open(statsFile,'r') as fh:
             stats = fh.read()
@@ -269,17 +364,34 @@ class HiSeqAnalysis(IlluminaNextGenAnalysis):
 
         srows = list()
         tree = html.fromstring(stats)
+        totalReads = 0
+        nsamps = 0
         for tables in tree.xpath('//table')[0:2]:
             for row in tables.xpath('./tr'):
                 cols = row.xpath('./th | ./td');
+
                 samp = cols[1].text
                 reads = cols[9].text
                 perc = cols[13].text
+
                 srows.append([samp, reads, perc])
+
+                if re.sub(',','',reads).isdigit():
+                    totalReads += int(re.sub(',','',reads))
+                    nsamps += 1
 
         scols = zip(*srows)
         colWidths = [ max( [len(elem) if elem else 0 for elem in col] ) for col in scols ]
-        rowFormat = '    ' + '  |  '.join(['%%%ds' % width for width in colWidths ]) + '\n'
+        rowFormat = '    ' + '  |  '.join(['%%%ds' % width for width in colWidths ])
+
+        ## Append analysis read count and num samps
+        if self.Run.SampleSheet.nonIndexRead2_numCycles > 0:
+            note = 'R1+R2'
+        else:
+            note = 'R1 only'
+
+        summary.append( 'Reads (%s):  %s\n' % (note, format(totalReads, 'n')) )
+        summary.append( 'Number of samples:  %s\n' % str(int(nsamps) - 1) )  #subtract 1 to exclude the undetermined sample
 
         for row in srows:
             summary.append(rowFormat % tuple(row))
@@ -295,10 +407,18 @@ class NextSeqAnalysis(IlluminaNextGenAnalysis):
         IlluminaNextGenAnalysis.__init__(self, analysisName, Run)
         self.finalDir_requiredItems = ['Fastq', 'QC', 'Reports', 'Stats']
 
-    def writeSamplesheet(self, outDir):
-        ssFile = path.join(outDir, 'SampleSheet.' + self.name + '.csv')
 
-        with open(ssFile, 'w') as fh:
+    def writeSamplesheet(self, outDir = None):
+
+        if not outDir:
+            outDir = self.processingDir
+
+        if not path.isdir(outDir):
+            mkdir_p(outDir)
+
+        self.ssFile = path.join(outDir, 'SampleSheet.' + self.name + '.csv')
+
+        with open(self.ssFile, 'w') as fh:
             fh.write('\n'.join( self.Run.SampleSheet.ss[:self.Run.SampleSheet.colNamesLineIndex+1] ))  #write out header portion of samplesheet
             fh.write('\n'.join( [self.Run.SampleSheet.ss[x] for x in self.ssLineIndices] ))  #write out lines corresponding to this analysis
 
@@ -310,7 +430,7 @@ class NextSeqAnalysis(IlluminaNextGenAnalysis):
         if self.Run.customBasesMask:
             basesMask = self.Run.customBasesMask
         else:
-            basesMask = self.Run.makeBasesMask(self.index1Length, self.index2Length)
+            basesMask = self.makeBasesMask(self.index1Length, self.index2Length)
 
         command += 'bcl2fastq --runfolder-dir '      + self.Run.primaryDir \
                           + ' --barcode-mismatches ' + str(self.Run.numMismatches) \
@@ -371,62 +491,116 @@ class NextSeqAnalysis(IlluminaNextGenAnalysis):
             dest = path.join(self.finishingDir, dirname)
 
             self.Run.safeCopy(src, dest)
-                
 
-    def summarizeDemuxResults(self):
+        #copy analysis samplesheet to analysis finishingDir
+        self.Run.safeCopy( self.ssFile, path.join(self.finishingDir, path.basename(self.ssFile)) )
+
+
+    def summarizeDemuxResults(self):  #nextseq analysis
         self.Run.log('Summarizing demux results...')
 
         summary = list()
 
+        ## Append stats from html report to summary
         statsFile = path.join(self.finalDir, 'Reports', 'html', self.Run.flowcell, 'all', 'all', 'all', 'laneBarcode.html')
 
         if not path.isfile(statsFile):
 
-            summary.append('    No laneBarecode.html found in finalDir! Checking finishingDir...\n\n')
+            summary.append('    No laneBarecode.html found in finalDir! Checking finishingDir...\n')
 
             statsFile = path.join(self.finishingDir,'Basecall_Stats','Demultiplex_Stats.htm')
             if not path.isfile(statsFile):
 
-                summary.append('    No laneBarecode.html found in finishingDir either.\n\n')
+                summary.append('    No laneBarecode.html found in finishingDir either.\n')
 
                 return summary
 
-        with open(statsFile,'r') as fh: stats = fh.read()
+        with open(statsFile,'r') as fh: 
+            stats = fh.read()
+
         tree = html.fromstring(stats)
-        table = tree.xpath('//table')[2]
+        table = tree.xpath('//table')[2]  #get "Lane Summary" table
         rows = table.xpath('./tr')
         nsamps = (len(rows) - 2)/4.0 #nsamps is number of samples per lane, including the 'unknown' sample of unassigned reads 
 
         laneStats = OrderedDict()
         sampStats = OrderedDict()
+
+        totalReads = 0  #across all 4 nextseq lanes
         
         for i in range(2,len(rows)):  #get per-lane and per-sample stats
             row = rows[i]
             cols = row.xpath('./th | ./td');
+
+            # Table cols:
+            #   Lane number
+            #   Project
+            #   Sample
+            #   Barcode sequence
+            #   Raw data:  Clusters
+            #   Raw data:  Perc. of the lane
+            #   Raw data:  Perc. perfect barcode
+            #   Raw data:  Perc. one mismatch barcode
+            #   Filtered data:  Clusters
+            #   Filtered data:  Yield (Mbases)
+            #   Filtered data:  Perc. PF Clusters
+            #   Filtered data:  Perc. >Q30 bases
+            #   Filtered data:  Mean quality score
+
             lane = cols[0].text
             samp = cols[2].text
-            reads = cols[8].text
-            perc = cols[11].text
+            numReads = re.sub(',','',cols[8].text)
+            perc_Q30bases = cols[11].text
+            
+            if not numReads:
+                numReads = 0
+            else:
+                numReads = int(numReads)
+                totalReads += numReads
 
-            if not perc: perc = 0  
+            if not perc_Q30bases: 
+                perc_Q30bases = 0.0
+            else:
+                perc_Q30bases = float(perc_Q30bases)
 
-            if lane not in laneStats.keys():
-                laneStats[lane] = {'reads': 0, 'perc': 0}
+            if lane not in laneStats:
+                laneStats[lane] = {'numReads': 0, 'num_Q30bases': 0, 'perc_Q30bases': 0}
 
-            laneStats[lane]['reads'] += int(re.sub(',','',reads))
-            laneStats[lane]['perc'] += float(perc)/nsamps
+            laneStats[lane]['numReads'] += numReads
+            laneStats[lane]['num_Q30bases'] += perc_Q30bases * numReads
 
-            if samp not in sampStats.keys():
-                sampStats[samp] = {'reads': 0, 'perc': 0}
+            if samp not in sampStats:
+                sampStats[samp] = {'numReads': 0, 'num_Q30bases': 0, 'perc_Q30bases': 0}
 
-            sampStats[samp]['reads'] += int(re.sub(',','',reads))
-            sampStats[samp]['perc'] += float(perc)/4.0
+            sampStats[samp]['numReads'] += numReads
+            sampStats[samp]['num_Q30bases'] += perc_Q30bases * numReads
 
-        laneRows = [['Lane', 'Reads', '% Bases >= Q30']]  + [[lane, format(laneStats[lane]['reads'], 'n'), '%.2f' % laneStats[lane]['perc']] for lane in laneStats.keys()]
-        sampRows = [['Sample', 'Reads', '% Bases >= Q30']] + [[samp, format(sampStats[samp]['reads'], 'n'), '%.2f' % sampStats[samp]['perc']] for samp in sampStats.keys()]
+
+        totalReads = 0  #find the total number of reads across all 4 next seq lanes. (A single lane to the user.)
+        for lane in laneStats:
+            ln = laneStats[lane]
+            totalReads += ln['numReads']
+            if ln['numReads'] > 0:
+                ln['perc_Q30bases'] = ln['num_Q30bases']/ln['numReads']
+
+        for samp in sampStats:
+            s = sampStats[samp]
+            if s['numReads'] > 0:
+                s['perc_Q30bases'] = s['num_Q30bases']/s['numReads']
+
+        laneRows = [['Lane', 'Reads', '% Bases >= Q30']] + [[lane, format(laneStats[lane]['numReads'], 'n'), '%.2f' % laneStats[lane]['perc_Q30bases']] for lane in laneStats]
+        sampRows = [['Sample', 'Reads', '% Bases >= Q30']] + [[samp, format(sampStats[samp]['numReads'], 'n'), '%.2f' % sampStats[samp]['perc_Q30bases']] for samp in sampStats]
         
-        summary.append('\nNumber of samples:  ' + str(int(nsamps - 1)) + '\n')  #subtract 1 to exclude the undetermined sample
+        ## Append analysis read count and num samps
+        if self.Run.SampleSheet.nonIndexRead1_numCycles > 0:
+            note = 'R1+R2'
+        else:
+            note = 'R1 only'
 
+        summary.append( 'Reads (%s):  %s\n' % (note, format(totalReads, 'n')) )
+        summary.append( 'Number of samples:  %s\n' % str(int(nsamps) - 1) )  #subtract 1 to exclude the undetermined sample
+
+        ## Append detailed stats tables
         summary += self.formatTable(laneRows)
         summary += self.formatTable(sampRows)
 

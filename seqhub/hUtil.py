@@ -1,7 +1,7 @@
 import subprocess, sys, os, select, stat
 from lxml import etree
 import os.path as path
-import shutil, errno
+import shutil, errno, re, gzip, glob, hashlib
 
 def shquote(text):
     """Return the given text as a single, safe string in sh code.
@@ -168,14 +168,14 @@ def gzNotEmpty(f):
     else:
         return False
 
-    def _hashfile(self, afile, hasher, blocksize=65536): 
+def hashfile(afile, hasher, blocksize=65536): 
+    buf = afile.read(blocksize)
+
+    while len(buf) > 0:
+        hasher.update(buf)
         buf = afile.read(blocksize)
 
-        while len(buf) > 0:
-            hasher.update(buf)
-            buf = afile.read(blocksize)
-
-        return hasher.hexdigest()
+    return hasher.hexdigest()
 
 def md5sum(myDir):
     # Calculate md5sum checksums on any .fastq.gz files in myDir. Saves checksums to md5sum.txt in myDir

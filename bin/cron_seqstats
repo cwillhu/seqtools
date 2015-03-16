@@ -41,7 +41,7 @@ def seqstatsOnNew(argv):
 
                 try:                
                     #add run to database if not already present
-                     myArgs = [runName, "--no-db-rewrite", "--no-hist-rewrite", "-d", options.primaryParent]
+                     myArgs = [runName, "--force", "-d", options.primaryParent]
                      if options.verbose: myArgs.append("--verbose")
                      logMsg = time.strftime("%c") + "  Running addSeqRun.add() on " + runName + " with args: " + ' '.join(myArgs)
                      hUtil.append(logMsg, settings.LOGFILE, echo = options.verbose)
